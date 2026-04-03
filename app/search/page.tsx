@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 type CaseItem = {
@@ -14,7 +14,7 @@ type CaseItem = {
   date?: string;
 };
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
 
@@ -24,19 +24,15 @@ export default function SearchPage() {
   useEffect(() => {
     const stored = localStorage.getItem("cases");
     if (!stored) return;
-
     const data = JSON.parse(stored);
-    const arr = Object.entries(data).map(([id, value]: any) => ({
-      id,
-      ...value,
-    }));
-
+    const arr = Object.entries(data).map(([id, value]: any) => ({ id, ...value }));
     setCases(arr);
   }, []);
 
   const statusColor = (status: string) => {
     if (status === "未回应") return "text-red-400 bg-red-500/10 border border-red-500/20";
     if (status === "协商中") return "text-yellow-400 bg-yellow-500/10 border border-yellow-500/20";
+    if (status === "申请结案中") return "text-orange-400 bg-orange-500/10 border border-orange-500/20";
     return "text-green-400 bg-green-500/10 border border-green-500/20";
   };
 
@@ -63,13 +59,11 @@ export default function SearchPage() {
     <main className="min-h-screen bg-[#0B0F14] text-white">
       <div className="max-w-[1000px] mx-auto px-8 py-16">
 
-        {/* HEADER */}
         <div className="mb-8">
           <h1 className="text-2xl font-semibold mb-2">搜索纠纷记录</h1>
           <p className="text-white/40 text-sm">按企业名称、纠纷类型或关键词搜索</p>
         </div>
 
-        {/* SEARCH INPUT */}
         <div className="relative mb-10">
           <input
             type="text"
@@ -88,28 +82,22 @@ export default function SearchPage() {
           )}
         </div>
 
-        {/* RESULTS COUNT */}
         {query.trim() && (
           <div className="text-xs text-white/30 mb-6">
             找到 {filtered.length} 条与「{query}」相关的记录
           </div>
         )}
 
-        {/* EMPTY STATE - no cases at all */}
         {!query.trim() && cases.length === 0 && (
           <div className="text-center py-24">
             <div className="text-5xl mb-4">📭</div>
             <div className="text-white/40 text-sm mb-6">平台暂无记录</div>
-            <Link
-              href="/create"
-              className="inline-block bg-blue-600 hover:bg-blue-500 px-6 py-2.5 rounded-xl text-sm transition"
-            >
+            <Link href="/create" className="inline-block bg-blue-600 hover:bg-blue-500 px-6 py-2.5 rounded-xl text-sm transition">
               发布第一条记录
             </Link>
           </div>
         )}
 
-        {/* EMPTY STATE - no search results */}
         {query.trim() && filtered.length === 0 && (
           <div className="text-center py-24">
             <div className="text-5xl mb-4">🔍</div>
@@ -118,12 +106,10 @@ export default function SearchPage() {
           </div>
         )}
 
-        {/* RESULTS */}
         <div className="space-y-4">
           {filtered.map((card) => (
             <Link key={card.id} href={`/case/${card.id}`}>
               <div className="bg-[#111827] border border-white/10 rounded-xl p-6 hover:border-white/20 transition cursor-pointer">
-
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <div className="text-white font-medium">{card.company}</div>
@@ -133,17 +119,13 @@ export default function SearchPage() {
                     {card.status}
                   </div>
                 </div>
-
                 <div className="text-xs text-white/50 mb-2">{card.type}</div>
-
                 <div className="text-white/70 text-sm mb-4">{card.desc}</div>
-
                 {formatDate(card.date) && (
                   <div className="text-xs text-white/25 border-t border-white/5 pt-3">
                     发布于 {formatDate(card.date)}
                   </div>
                 )}
-
               </div>
             </Link>
           ))}
@@ -151,5 +133,13 @@ export default function SearchPage() {
 
       </div>
     </main>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0B0F14]" />}>
+      <SearchContent />
+    </Suspense>
   );
 }
