@@ -106,7 +106,7 @@ export default function HomePage() {
   ];
  
   return (
-    <main className="min-h-screen bg-[#0B0F14] text-white overflow-hidden">
+    <main className="min-h-screen bg-[#0B0F14] text-white">
  
       {/* HERO */}
       <section>
@@ -157,10 +157,10 @@ export default function HomePage() {
           </div>
  
           {/* RIGHT SCROLL */}
-          <div className="h-[700px] overflow-hidden">
+          <div className="h-[700px] overflow-hidden pointer-events-none">
             <div className="animate-scroll flex flex-col gap-5">
               {[...cases, ...cases, ...cases].map((card, index) => (
-                <Link key={index} href={`/case/${card.id}`}>
+                <Link key={index} href={`/case/${card.id}`} className="pointer-events-auto">
                   <div className="bg-[#111827] border border-white/10 rounded-xl p-6 hover:border-white/20 transition cursor-pointer">
                     <div className="flex justify-between items-start mb-3">
                       <div>

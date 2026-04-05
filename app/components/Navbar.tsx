@@ -1,23 +1,23 @@
 "use client";
-
+ 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-
+ 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-
+ 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [query, setQuery] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
-
+ 
   const checkLogin = () => {
     const user = localStorage.getItem("user");
     setIsLoggedIn(!!user);
     if (user) countUnread(user);
   };
-
+ 
   const countUnread = (user: string) => {
     let count = 0;
     for (let i = 0; i < localStorage.length; i++) {
@@ -37,12 +37,11 @@ export default function Navbar() {
     }
     setUnreadCount(count);
   };
-
+ 
   useEffect(() => {
     checkLogin();
   }, [pathname]);
-
-  // recount unread every 5 seconds
+ 
   useEffect(() => {
     const interval = setInterval(() => {
       const user = localStorage.getItem("user");
@@ -50,33 +49,33 @@ export default function Navbar() {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
-
+ 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
     router.push(`/search?q=${encodeURIComponent(query)}`);
   };
-
+ 
   const navItems = [
     { name: "首页", href: "/" },
     { name: "记录", href: "/feed" },
     { name: "发布", href: "/create" },
     { name: "关于", href: "/about" },
   ];
-
+ 
   return (
     <nav className="sticky top-0 z-50 backdrop-blur bg-[#0B0F14]/80 border-b border-white/10">
       <div className="max-w-[1400px] mx-auto px-8">
-        <div className="flex items-center justify-between h-20">
-
+        <div className="flex items-center justify-between h-20 gap-6">
+ 
           {/* LEFT */}
-          <div className="flex items-center gap-12">
-
+          <div className="flex items-center gap-12 shrink-0">
+ 
             {/* LOGO */}
             <Link href="/" className="text-white font-semibold text-xl">
               91<span className="text-blue-500">记录</span>
             </Link>
-
+ 
             {/* NAV */}
             <div className="hidden md:flex items-center gap-10">
               {navItems.map((item) => {
@@ -96,12 +95,12 @@ export default function Navbar() {
                 );
               })}
             </div>
-
+ 
           </div>
-
+ 
           {/* RIGHT */}
-          <div className="flex items-center gap-5">
-
+          <div className="flex items-center gap-4 shrink-0 ml-auto">
+ 
             {/* SEARCH BAR */}
             <form onSubmit={handleSearch} className="hidden md:flex items-center">
               <input
@@ -109,7 +108,7 @@ export default function Navbar() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="搜索纠纷 / 公司 / 姓名..."
-                className="bg-white/5 border border-white/10 rounded-l-lg px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500 w-64"
+                className="bg-white/5 border border-white/10 rounded-l-lg px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500 w-44"
               />
               <button
                 type="submit"
@@ -118,10 +117,10 @@ export default function Navbar() {
                 搜索
               </button>
             </form>
-
-            {/* DM ICON - only when logged in */}
+ 
+            {/* DM ICON */}
             {isLoggedIn && (
-              <Link href="/messages" className="relative flex items-center justify-center">
+              <Link href="/messages" className="relative flex items-center justify-center shrink-0">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   className="w-5 h-5 text-white/50 hover:text-white transition"
@@ -143,26 +142,26 @@ export default function Navbar() {
                 )}
               </Link>
             )}
-
+ 
             {/* AUTH */}
             {isLoggedIn ? (
               <Link
                 href="/profile"
-                className="text-sm text-white/60 hover:text-white transition"
+                className="shrink-0 bg-white/10 hover:bg-white/20 transition text-sm px-4 py-2 rounded-lg text-white"
               >
                 我的
               </Link>
             ) : (
               <Link
                 href="/login"
-                className="bg-blue-600 hover:bg-blue-500 transition text-sm px-4 py-2 rounded-lg text-white"
+                className="shrink-0 bg-blue-600 hover:bg-blue-500 transition text-sm px-4 py-2 rounded-lg text-white"
               >
                 登录
               </Link>
             )}
-
+ 
           </div>
-
+ 
         </div>
       </div>
     </nav>
