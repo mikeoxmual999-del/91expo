@@ -102,7 +102,7 @@ export default function HomePage() {
     <main className="min-h-screen bg-[#0B0F14] text-white overflow-hidden">
 
       {/* HERO */}
-      <section className="border-b border-white/10">
+      <section>
         <div className="max-w-[1400px] mx-auto px-8 py-20 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
 
           {/* LEFT */}
@@ -150,7 +150,7 @@ export default function HomePage() {
           </div>
 
           {/* RIGHT SCROLL */}
-          <div className="h-[460px] overflow-hidden">
+          <div className="h-[700px] overflow-hidden">
             <div className="animate-scroll flex flex-col gap-5">
               {[...cases, ...cases, ...cases].map((card, index) => (
                 <Link key={index} href={`/case/${card.id}`}>

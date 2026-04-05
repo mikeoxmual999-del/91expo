@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 function CoordinationForm() {
@@ -13,6 +13,18 @@ function CoordinationForm() {
   const [desc, setDesc] = useState("");
   const [contact, setContact] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [user, setUser] = useState<string | null>(null);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) {
+      router.replace("/login");
+      return;
+    }
+    setUser(storedUser);
+    setChecked(true);
+  }, []);
 
   const inputClass =
     "w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500 transition text-sm";
@@ -35,17 +47,26 @@ function CoordinationForm() {
       if (!cases[caseId].timeline) cases[caseId].timeline = [];
       const now = new Date().toLocaleString("zh-CN");
       cases[caseId].timeline.push(
-        `🤝 协调请求已提交 · 期望金额：${amount || "未填写"} · ${now}`
+        `🤝 ${user} 提交协调请求 · 期望金额：${amount || "未填写"} · ${now}`
       );
       localStorage.setItem("cases", JSON.stringify(cases));
     }
 
     const requests = JSON.parse(localStorage.getItem("coordination_requests") || "[]");
-    requests.push({ caseId, amount, desc, contact, date: new Date().toISOString() });
+    requests.push({
+      caseId,
+      amount,
+      desc,
+      contact,
+      submittedBy: user,
+      date: new Date().toISOString(),
+    });
     localStorage.setItem("coordination_requests", JSON.stringify(requests));
 
     router.push(`/case/${caseId}`);
   };
+
+  if (!checked) return null;
 
   return (
     <main className="min-h-screen bg-[#0B0F14] text-white">
@@ -63,6 +84,12 @@ function CoordinationForm() {
           <p className="text-white/40 text-sm">
             提交协调请求后，平台将介入协助推动问题解决。请如实填写诉求信息。
           </p>
+        </div>
+
+        {/* LOGGED IN AS */}
+        <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-6 flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full bg-green-400" />
+          <span className="text-white/50 text-xs">以 <span className="text-white">{user}</span> 身份提交</span>
         </div>
 
         <div className="bg-[#111827] border border-white/10 rounded-2xl p-8">
