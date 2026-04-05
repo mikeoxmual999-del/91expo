@@ -1,8 +1,8 @@
 "use client";
-
+ 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-
+ 
 type CaseItem = {
   id: string;
   company: string;
@@ -13,21 +13,22 @@ type CaseItem = {
   date?: string;
   timeline?: string[];
   creator?: string;
+  paid?: boolean;
 };
-
+ 
 type Message = {
   sender: string;
   text: string;
   timestamp: string;
 };
-
+ 
 type DMThread = {
   caseId: string;
   posterId: string;
   responderId: string;
   messages: Message[];
 };
-
+ 
 type CoordinationRequest = {
   caseId: string;
   amount: string;
@@ -35,9 +36,9 @@ type CoordinationRequest = {
   contact: string;
   date: string;
 };
-
+ 
 const ADMIN_PASSWORD = "Baobei1109";
-
+ 
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [input, setInput] = useState("");
@@ -47,7 +48,7 @@ export default function AdminPage() {
   const [dmThreads, setDmThreads] = useState<DMThread[]>([]);
   const [expandedDm, setExpandedDm] = useState<string | null>(null);
   const [coordRequests, setCoordRequests] = useState<CoordinationRequest[]>([]);
-
+ 
   const loadCases = () => {
     const stored = localStorage.getItem("cases");
     if (!stored) return;
@@ -61,7 +62,7 @@ export default function AdminPage() {
       });
     setCases(all);
   };
-
+ 
   const loadDMs = () => {
     const threads: DMThread[] = [];
     for (let i = 0; i < localStorage.length; i++) {
@@ -80,7 +81,7 @@ export default function AdminPage() {
     });
     setDmThreads(threads);
   };
-
+ 
   const loadCoordination = () => {
     const stored = localStorage.getItem("coordination_requests");
     if (!stored) return;
@@ -92,7 +93,7 @@ export default function AdminPage() {
       setCoordRequests(sorted);
     } catch {}
   };
-
+ 
   useEffect(() => {
     if (authed) {
       loadCases();
@@ -100,7 +101,7 @@ export default function AdminPage() {
       loadCoordination();
     }
   }, [authed]);
-
+ 
   const handleLogin = () => {
     if (input === ADMIN_PASSWORD) {
       setAuthed(true);
@@ -109,7 +110,7 @@ export default function AdminPage() {
       setError(true);
     }
   };
-
+ 
   const handleApprove = (id: string) => {
     const confirmed = confirm("确认批准结案？该记录将标记为已解决。");
     if (!confirmed) return;
@@ -124,7 +125,7 @@ export default function AdminPage() {
     localStorage.setItem("cases", JSON.stringify(data));
     loadCases();
   };
-
+ 
   const handleReject = (id: string) => {
     const confirmed = confirm("确认驳回结案申请？该记录将返回协商中状态。");
     if (!confirmed) return;
@@ -139,7 +140,7 @@ export default function AdminPage() {
     localStorage.setItem("cases", JSON.stringify(data));
     loadCases();
   };
-
+ 
   const handleDelete = (id: string) => {
     const confirmed = confirm("确认删除该记录？\n\n删除后将无法恢复。");
     if (!confirmed) return;
@@ -150,7 +151,7 @@ export default function AdminPage() {
     localStorage.setItem("cases", JSON.stringify(data));
     loadCases();
   };
-
+ 
   const handleDeleteCoord = (index: number) => {
     const confirmed = confirm("确认删除此协调请求？");
     if (!confirmed) return;
@@ -158,14 +159,14 @@ export default function AdminPage() {
     setCoordRequests(updated);
     localStorage.setItem("coordination_requests", JSON.stringify(updated));
   };
-
+ 
   const statusColor = (status: string) => {
     if (status === "未回应") return "text-red-400 bg-red-500/10 border border-red-500/20";
     if (status === "协商中") return "text-yellow-400 bg-yellow-500/10 border border-yellow-500/20";
     if (status === "申请结案中") return "text-orange-400 bg-orange-500/10 border border-orange-500/20";
     return "text-green-400 bg-green-500/10 border border-green-500/20";
   };
-
+ 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "日期未知";
     return new Date(dateStr).toLocaleDateString("zh-CN", {
@@ -174,7 +175,7 @@ export default function AdminPage() {
       day: "numeric",
     });
   };
-
+ 
   const formatTime = (ts: string) => {
     if (!ts) return "";
     return new Date(ts).toLocaleString("zh-CN", {
@@ -184,14 +185,14 @@ export default function AdminPage() {
       minute: "2-digit",
     });
   };
-
+ 
   const getCaseCompany = (caseId: string) => {
     const c = cases.find((x) => x.id === caseId);
     return c?.company || caseId;
   };
-
+ 
   const pending = cases.filter((c) => c.status === "申请结案中");
-
+ 
   // LOGIN SCREEN
   if (!authed) {
     return (
@@ -227,12 +228,12 @@ export default function AdminPage() {
       </main>
     );
   }
-
+ 
   // ADMIN DASHBOARD
   return (
     <main className="min-h-screen bg-[#0B0F14] text-white">
       <div className="max-w-[1000px] mx-auto px-8 py-16">
-
+ 
         {/* HEADER */}
         <div className="flex items-center justify-between mb-10">
           <div>
@@ -254,9 +255,9 @@ export default function AdminPage() {
             </button>
           </div>
         </div>
-
+ 
         {/* STATS ROW */}
-        <div className="grid grid-cols-5 gap-4 mb-10">
+        <div className="grid grid-cols-6 gap-4 mb-10">
           <div className="bg-[#111827] border border-white/10 rounded-xl px-4 py-4 text-center">
             <div className="text-2xl font-bold text-white mb-1">{cases.length}</div>
             <div className="text-xs text-white/40">全部记录</div>
@@ -279,8 +280,12 @@ export default function AdminPage() {
             <div className="text-2xl font-bold text-purple-400 mb-1">{coordRequests.length}</div>
             <div className="text-xs text-white/40">协调请求</div>
           </div>
+          <div className="bg-[#111827] border border-yellow-500/20 rounded-xl px-4 py-4 text-center">
+            <div className="text-2xl font-bold text-yellow-400 mb-1">{cases.filter(c => !c.paid && c.creator !== "system").length}</div>
+            <div className="text-xs text-white/40">待付款</div>
+          </div>
         </div>
-
+ 
         {/* TABS */}
         <div className="flex gap-3 mb-8 flex-wrap">
           <button
@@ -336,7 +341,7 @@ export default function AdminPage() {
             )}
           </button>
         </div>
-
+ 
         {/* TAB: PENDING */}
         {tab === "pending" && (
           <div>
@@ -376,7 +381,7 @@ export default function AdminPage() {
             </div>
           </div>
         )}
-
+ 
         {/* TAB: ALL RECORDS */}
         {tab === "all" && (
           <div>
@@ -393,7 +398,12 @@ export default function AdminPage() {
                       <div className="text-white font-semibold">{c.company}</div>
                       <div className="text-blue-400 font-bold mt-1">{c.amount}</div>
                     </div>
-                    <div className={`text-xs px-3 py-1 rounded-full ${statusColor(c.status)}`}>{c.status}</div>
+                    <div className="flex items-center gap-2">
+                      {!c.paid && c.creator !== "system" && (
+                        <span className="text-xs px-2 py-1 rounded-full text-yellow-400 bg-yellow-500/10 border border-yellow-500/20">待付款</span>
+                      )}
+                      <div className={`text-xs px-3 py-1 rounded-full ${statusColor(c.status)}`}>{c.status}</div>
+                    </div>
                   </div>
                   <div className="text-xs text-white/40 mb-2">{c.type}</div>
                   <div className="text-sm text-white/60 mb-4 leading-relaxed">{c.desc}</div>
@@ -408,7 +418,7 @@ export default function AdminPage() {
             </div>
           </div>
         )}
-
+ 
         {/* TAB: ALL DMs */}
         {tab === "dms" && (
           <div>
@@ -456,7 +466,7 @@ export default function AdminPage() {
             </div>
           </div>
         )}
-
+ 
         {/* TAB: COORDINATION */}
         {tab === "coordination" && (
           <div>
@@ -481,7 +491,7 @@ export default function AdminPage() {
                       协调请求
                     </div>
                   </div>
-
+ 
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="bg-white/5 rounded-xl px-4 py-3">
                       <div className="text-xs text-white/30 mb-1">期望解决金额</div>
@@ -492,14 +502,14 @@ export default function AdminPage() {
                       <div className="text-blue-400 text-sm font-medium">{req.contact || "未填写"}</div>
                     </div>
                   </div>
-
+ 
                   {req.desc && (
                     <div className="bg-white/5 rounded-xl px-4 py-3 mb-4">
                       <div className="text-xs text-white/30 mb-1">补充说明</div>
                       <div className="text-white/70 text-sm leading-relaxed">{req.desc}</div>
                     </div>
                   )}
-
+ 
                   <div className="flex items-center justify-between border-t border-white/5 pt-4">
                     <div className="text-xs text-white/25">
                       提交于 {formatDate(req.date)}
@@ -524,7 +534,7 @@ export default function AdminPage() {
             </div>
           </div>
         )}
-
+ 
       </div>
     </main>
   );

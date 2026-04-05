@@ -43,39 +43,36 @@ function CheckoutContent() {
     }
   }, [caseId]);
  
-  const handlePay = () => {
-    // Stripe will be connected here later
-    // For now simulate payment success
+  const handlePay = async () => {
+    if (!pending || !caseData) return;
     setPaying(true);
  
-    setTimeout(() => {
-      const stored = localStorage.getItem("cases");
-      if (!stored || !pending) return;
+    try {
+      const res = await fetch("/api/stripe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          caseId,
+          plan: pending.plan,
+          duration: pending.duration,
+          price: pending.price,
+          company: caseData.company,
+        }),
+      });
  
-      const cases = JSON.parse(stored);
-      if (cases[caseId!]) {
-        cases[caseId!].status = "未回应";
-        cases[caseId!].paid = true;
-        cases[caseId!].plan = pending.plan;
-        cases[caseId!].duration = pending.duration;
-        cases[caseId!].expiresAt =
-          pending.duration === "permanent"
-            ? null
-            : new Date(
-                Date.now() + parseInt(pending.duration) * 24 * 60 * 60 * 1000
-              ).toISOString();
+      const data = await res.json();
  
-        const now = new Date().toLocaleString("zh-CN");
-        cases[caseId!].timeline.push(
-          `✅ 付款成功 · 方案：${PLAN_LABELS[pending.plan]} · 时长：${DURATION_LABELS[pending.duration]} · ${now}`
-        );
- 
-        localStorage.setItem("cases", JSON.stringify(cases));
-        localStorage.removeItem("pending_payment");
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert("付款初始化失败，请重试");
+        setPaying(false);
       }
- 
-      router.push(`/case/${caseId}`);
-    }, 1500);
+    } catch (err) {
+      console.error(err);
+      alert("发生错误，请重试");
+      setPaying(false);
+    }
   };
  
   if (!pending || !caseData) return null;
@@ -162,23 +159,7 @@ function CheckoutContent() {
           </div>
         </div>
  
-        {/* PAYMENT METHODS */}
-        <div className="bg-[#111827] border border-white/10 rounded-2xl p-6 mb-8">
-          <div className="text-xs text-white/40 uppercase tracking-widest mb-4">支持的付款方式</div>
-          <div className="flex flex-wrap gap-3">
-            {["💳 信用卡 / 借记卡", "WeChat Pay", "Alipay", "₿ 加密货币"].map((method) => (
-              <div
-                key={method}
-                className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white/60"
-              >
-                {method}
-              </div>
-            ))}
-          </div>
-          <p className="text-white/20 text-xs mt-4">
-            付款由 Stripe 安全处理，平台不储存您的支付信息。
-          </p>
-        </div>
+ 
  
         {/* PAY BUTTON */}
         <button
@@ -194,7 +175,7 @@ function CheckoutContent() {
         </button>
  
         <p className="text-center text-white/20 text-xs mt-4">
-          付款成功后记录将立即公开展示
+          付款由 Stripe 安全处理 · 支持 WeChat Pay · Alipay · 信用卡 · 加密货币
         </p>
  
       </div>

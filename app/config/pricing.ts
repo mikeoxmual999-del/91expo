@@ -3,14 +3,14 @@ export type DurationType = "7" | "30" | "permanent";
  
 export const PRICING = {
   basic: {
-    "7": 5,
-    "30": 15,
-    permanent: 50,
+    "7": 1,
+    "30": 1,
+    permanent: 1,
   },
   premium: {
-    "7": 15,
-    "30": 35,
-    permanent: 80,
+    "7": 1,
+    "30": 1,
+    permanent: 1,
   },
 };
  

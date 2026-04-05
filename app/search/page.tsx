@@ -1,9 +1,9 @@
 "use client";
-
+ 
 import Link from "next/link";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-
+ 
 type CaseItem = {
   id: string;
   company: string;
@@ -13,29 +13,31 @@ type CaseItem = {
   desc: string;
   date?: string;
 };
-
+ 
 function SearchContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
-
+ 
   const [query, setQuery] = useState(initialQuery);
   const [cases, setCases] = useState<CaseItem[]>([]);
-
+ 
   useEffect(() => {
     const stored = localStorage.getItem("cases");
     if (!stored) return;
     const data = JSON.parse(stored);
-    const arr = Object.entries(data).map(([id, value]: any) => ({ id, ...value }));
+    const arr = Object.entries(data)
+      .map(([id, value]: any) => ({ id, ...value }))
+      .filter((c: any) => c.paid === true || c.creator === "system");
     setCases(arr);
   }, []);
-
+ 
   const statusColor = (status: string) => {
     if (status === "未回应") return "text-red-400 bg-red-500/10 border border-red-500/20";
     if (status === "协商中") return "text-yellow-400 bg-yellow-500/10 border border-yellow-500/20";
     if (status === "申请结案中") return "text-orange-400 bg-orange-500/10 border border-orange-500/20";
     return "text-green-400 bg-green-500/10 border border-green-500/20";
   };
-
+ 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return null;
     return new Date(dateStr).toLocaleDateString("zh-CN", {
@@ -44,7 +46,7 @@ function SearchContent() {
       day: "numeric",
     });
   };
-
+ 
   const filtered = cases.filter((c) => {
     if (!query.trim()) return true;
     const q = query.toLowerCase();
@@ -54,16 +56,16 @@ function SearchContent() {
       c.desc.toLowerCase().includes(q)
     );
   });
-
+ 
   return (
     <main className="min-h-screen bg-[#0B0F14] text-white">
       <div className="max-w-[1000px] mx-auto px-8 py-16">
-
+ 
         <div className="mb-8">
           <h1 className="text-2xl font-semibold mb-2">搜索纠纷记录</h1>
           <p className="text-white/40 text-sm">按企业名称、纠纷类型或关键词搜索</p>
         </div>
-
+ 
         <div className="relative mb-10">
           <input
             type="text"
@@ -81,13 +83,13 @@ function SearchContent() {
             </button>
           )}
         </div>
-
+ 
         {query.trim() && (
           <div className="text-xs text-white/30 mb-6">
             找到 {filtered.length} 条与「{query}」相关的记录
           </div>
         )}
-
+ 
         {!query.trim() && cases.length === 0 && (
           <div className="text-center py-24">
             <div className="text-5xl mb-4">📭</div>
@@ -97,7 +99,7 @@ function SearchContent() {
             </Link>
           </div>
         )}
-
+ 
         {query.trim() && filtered.length === 0 && (
           <div className="text-center py-24">
             <div className="text-5xl mb-4">🔍</div>
@@ -105,7 +107,7 @@ function SearchContent() {
             <div className="text-white/20 text-xs">尝试使用其他关键词搜索</div>
           </div>
         )}
-
+ 
         <div className="space-y-4">
           {filtered.map((card) => (
             <Link key={card.id} href={`/case/${card.id}`}>
@@ -130,12 +132,12 @@ function SearchContent() {
             </Link>
           ))}
         </div>
-
+ 
       </div>
     </main>
   );
 }
-
+ 
 export default function SearchPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#0B0F14]" />}>
