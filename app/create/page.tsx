@@ -1,93 +1,101 @@
 "use client";
- 
+
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
- 
+
 export default function CreatePage() {
   const router = useRouter();
- 
+
   const [form, setForm] = useState({
     company: "",
     amount: "",
     type: "",
     desc: "",
   });
- 
+
   const [submitting, setSubmitting] = useState(false);
- 
+
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
- 
-  function handleSubmit(e: React.FormEvent) {
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
- 
+
     const user = localStorage.getItem("user");
- 
+
     if (!user) {
       alert("请先登录后再发布纠纷记录");
       router.push("/login");
       return;
     }
- 
+
     if (!form.company.trim() || !form.amount.trim() || !form.desc.trim()) {
       alert("请填写企业名称、涉及金额及纠纷描述");
       return;
     }
- 
+
     setSubmitting(true);
- 
-    const stored = localStorage.getItem("cases");
-    let cases = stored ? JSON.parse(stored) : {};
- 
+
     const newId = Date.now().toString();
- 
-    // save as pending until payment confirmed
-    cases[newId] = {
+    const timeline = [`记录已创建，等待付款确认 · ${new Date().toLocaleString("zh-CN")}`];
+
+    const caseData = {
+      id: newId,
       company: form.company.trim(),
       amount: form.amount.trim(),
       status: "待付款",
       type: form.type || "未分类",
-      desc: form.desc.trim(),
+      description: form.desc.trim(),
       creator: user,
-      date: new Date().toISOString(),
-      timeline: [`记录已创建，等待付款确认 · ${new Date().toLocaleString("zh-CN")}`],
       paid: false,
+      timeline,
     };
- 
+
+    // save to database
+    try {
+      await fetch("/api/cases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(caseData),
+      });
+    } catch (err) {
+      console.error("DB save failed, using localStorage", err);
+    }
+
+    // also save to localStorage as backup
+    const stored = localStorage.getItem("cases");
+    let cases = stored ? JSON.parse(stored) : {};
+    cases[newId] = { ...caseData, desc: form.desc.trim(), date: new Date().toISOString() };
     localStorage.setItem("cases", JSON.stringify(cases));
- 
-    // redirect to pricing page
+
     router.push(`/pricing?caseId=${newId}`);
   }
- 
+
   const inputClass =
     "w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500 transition text-sm";
- 
+
   return (
     <main className="min-h-screen bg-[#0B0F14] text-white">
       <div className="max-w-[700px] mx-auto px-8 py-16">
- 
-        {/* BACK */}
+
         <Link
           href="/"
           className="inline-flex items-center gap-2 text-white/40 hover:text-white/70 text-sm mb-10 transition"
         >
           ← 返回首页
         </Link>
- 
-        {/* TITLE */}
+
         <div className="mb-8">
           <h1 className="text-2xl font-semibold mb-2">发布纠纷记录</h1>
           <p className="text-white/40 text-sm">
             请如实填写纠纷信息，提交后选择发布方案完成付款后正式公开。
           </p>
         </div>
- 
-        {/* STEPS */}
+
         <div className="flex items-center gap-3 mb-8">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-medium">1</div>
@@ -104,12 +112,10 @@ export default function CreatePage() {
             <span className="text-white/40 text-sm">完成付款</span>
           </div>
         </div>
- 
-        {/* FORM CARD */}
+
         <div className="bg-[#111827] border border-white/10 rounded-2xl p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
- 
-            {/* COMPANY */}
+
             <div>
               <label className="block text-xs text-white/50 uppercase tracking-widest mb-2">
                 企业名称 <span className="text-red-400">*</span>
@@ -122,8 +128,7 @@ export default function CreatePage() {
                 className={inputClass}
               />
             </div>
- 
-            {/* AMOUNT */}
+
             <div>
               <label className="block text-xs text-white/50 uppercase tracking-widest mb-2">
                 涉及金额 <span className="text-red-400">*</span>
@@ -136,8 +141,7 @@ export default function CreatePage() {
                 className={inputClass}
               />
             </div>
- 
-            {/* TYPE */}
+
             <div>
               <label className="block text-xs text-white/50 uppercase tracking-widest mb-2">
                 纠纷类型
@@ -158,8 +162,7 @@ export default function CreatePage() {
                 <option value="其他" style={{ backgroundColor: "#0B0F14", color: "white" }}>其他</option>
               </select>
             </div>
- 
-            {/* DESC */}
+
             <div>
               <label className="block text-xs text-white/50 uppercase tracking-widest mb-2">
                 纠纷描述 <span className="text-red-400">*</span>
@@ -176,9 +179,9 @@ export default function CreatePage() {
                 {form.desc.length} 字
               </div>
             </div>
- 
+
             <div className="border-t border-white/10" />
- 
+
             <button
               type="submit"
               disabled={submitting}
@@ -186,14 +189,14 @@ export default function CreatePage() {
             >
               {submitting ? "处理中..." : "下一步：选择方案 →"}
             </button>
- 
+
           </form>
         </div>
- 
+
         <p className="text-center text-white/20 text-xs mt-6">
           提交即表示您确认所填写信息真实有效
         </p>
- 
+
       </div>
     </main>
   );

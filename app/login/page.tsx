@@ -20,7 +20,7 @@ export default function LoginPage() {
     { code: "+65", label: "SG" },
   ];
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     if (!phone.trim()) {
@@ -31,6 +31,19 @@ export default function LoginPage() {
     setSubmitting(true);
 
     const fullPhone = `${countryCode}${phone.trim()}`;
+
+    try {
+      // save user to database
+      await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: fullPhone }),
+      });
+    } catch (err) {
+      console.error("DB save failed, continuing with localStorage", err);
+    }
+
+    // always save to localStorage for session
     localStorage.setItem("user", fullPhone);
     window.dispatchEvent(new Event("loginStateChanged"));
 
@@ -44,7 +57,6 @@ export default function LoginPage() {
     <main className="min-h-screen bg-[#0B0F14] text-white flex flex-col">
       <div className="max-w-[420px] w-full mx-auto px-6 py-16">
 
-        {/* BACK */}
         <Link
           href="/"
           className="inline-flex items-center gap-2 text-white/40 hover:text-white/70 text-sm mb-10 transition"
@@ -52,23 +64,19 @@ export default function LoginPage() {
           ← 返回首页
         </Link>
 
-        {/* HEADER */}
         <div className="mb-8">
           <h1 className="text-2xl font-semibold mb-2">登录 / 注册</h1>
           <p className="text-white/40 text-sm">使用手机号进入平台，无需密码。</p>
         </div>
 
-        {/* FORM CARD */}
         <div className="bg-[#111827] border border-white/10 rounded-2xl p-8 space-y-5">
 
-          {/* PHONE ROW */}
           <div>
             <label className="block text-xs text-white/50 uppercase tracking-widest mb-2">
               手机号
             </label>
             <div className="flex gap-3">
 
-              {/* COUNTRY CODE */}
               <div className="relative w-[110px]">
                 <select
                   value={countryCode}
@@ -90,7 +98,6 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* PHONE INPUT */}
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -102,10 +109,8 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* DIVIDER */}
           <div className="border-t border-white/10" />
 
-          {/* SMS BUTTON - coming soon */}
           <button
             type="button"
             disabled
@@ -114,7 +119,6 @@ export default function LoginPage() {
             获取验证码（即将上线）
           </button>
 
-          {/* SUBMIT */}
           <button
             onClick={handleSubmit}
             disabled={submitting}
@@ -125,7 +129,6 @@ export default function LoginPage() {
 
         </div>
 
-        {/* NOTE */}
         <p className="text-center text-white/20 text-xs mt-6">
           登录即表示您同意平台服务条款与隐私政策
         </p>
