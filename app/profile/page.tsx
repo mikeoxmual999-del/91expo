@@ -90,7 +90,7 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
-  const paidCases = cases.filter(c => c.paid === true);
+  const paidCases = cases.filter(c => !!c.paid);
   const unpaidCases = cases.filter(c => !c.paid);
 
   return (
