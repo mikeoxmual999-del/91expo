@@ -167,7 +167,7 @@ export default function CaseDetailPage() {
   const isSystemCase = caseData.creator === "system" || !caseData.creator;
   const isCreator = !isSystemCase && caseData.creator === user;
   const isOtherUser = user && (isSystemCase || user !== caseData.creator);
-  const isPaid = caseData.paid === true || isSystemCase;
+  const isPaid = !!caseData.paid || isSystemCase;
 
   if (!isPaid && !isCreator) {
     return (
