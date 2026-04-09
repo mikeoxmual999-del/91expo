@@ -1,101 +1,117 @@
 "use client";
- 
+
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
- 
+
 type CaseItem = {
   company: string;
   amount: string;
   status: string;
   type: string;
   desc: string;
+  description?: string;
   date?: string;
   timeline?: string[];
   creator?: string;
   paid?: boolean;
 };
- 
+
 export default function CaseDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = Array.isArray(params.id) ? params.id[0] : (params.id as string);
- 
+
   const [caseData, setCaseData] = useState<CaseItem | null>(null);
   const [user, setUser] = useState<string | null>(null);
- 
+
   useEffect(() => {
-    const stored = localStorage.getItem("cases");
     const currentUser = localStorage.getItem("user");
     setUser(currentUser);
+    loadCase();
+  }, [id]);
+
+  const loadCase = async () => {
+    // try DB first via single case endpoint
+    try {
+      const res = await fetch(`/api/cases?id=${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.id) {
+          const normalized = {
+            ...data,
+            desc: data.description || data.desc || "",
+            timeline: typeof data.timeline === "string"
+              ? JSON.parse(data.timeline)
+              : data.timeline || ["记录已创建"],
+          };
+          setCaseData(normalized);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("DB fetch failed, using localStorage", err);
+    }
+
+    // fallback to localStorage
+    const stored = localStorage.getItem("cases");
     if (!stored) return;
     const cases = JSON.parse(stored);
     const data = cases[id];
     if (data && !data.timeline) data.timeline = ["记录已创建"];
     setCaseData(data || null);
-  }, [id]);
- 
-  const statusColor = (status: string) => {
-    if (status === "未回应") return "text-red-400 bg-red-500/10 border border-red-500/20";
-    if (status === "协商中") return "text-yellow-400 bg-yellow-500/10 border border-yellow-500/20";
-    if (status === "申请结案中") return "text-orange-400 bg-orange-500/10 border border-orange-500/20";
-    return "text-green-400 bg-green-500/10 border border-green-500/20";
   };
- 
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return "日期未知";
-    return new Date(dateStr).toLocaleDateString("zh-CN", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
- 
-  const updateCase = (updatedFields: Partial<CaseItem>) => {
+
+  const updateCase = async (updatedFields: Partial<CaseItem>) => {
+    // update DB
+    try {
+      await fetch("/api/cases", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...updatedFields }),
+      });
+    } catch (err) {
+      console.error("DB update failed", err);
+    }
+
+    // update localStorage
     const stored = localStorage.getItem("cases");
-    if (!stored) return;
-    const cases = JSON.parse(stored);
-    if (!cases[id]) return;
-    cases[id] = { ...cases[id], ...updatedFields };
-    localStorage.setItem("cases", JSON.stringify(cases));
-    setCaseData({ ...cases[id] });
+    if (stored) {
+      const cases = JSON.parse(stored);
+      if (cases[id]) {
+        cases[id] = { ...cases[id], ...updatedFields };
+        localStorage.setItem("cases", JSON.stringify(cases));
+      }
+    }
+
+    setCaseData((prev) => prev ? { ...prev, ...updatedFields } : prev);
   };
- 
+
   const handleRequestClose = () => {
     const confirmed = confirm("申请结案？\n\n提交后将由管理员审核，审核通过后才会标记为已解决。");
     if (!confirmed) return;
     const now = new Date().toLocaleString("zh-CN");
-    const stored = localStorage.getItem("cases");
-    if (!stored) return;
-    const cases = JSON.parse(stored);
-    const timeline = cases[id].timeline || [];
-    timeline.push(`📋 用户申请结案，等待管理员审核 · ${now}`);
+    const timeline = [...(caseData?.timeline || []), `📋 用户申请结案，等待管理员审核 · ${now}`];
     updateCase({ status: "申请结案中", timeline });
   };
- 
+
   const handleCancelClose = () => {
     const confirmed = confirm("确认撤回结案申请？");
     if (!confirmed) return;
     const now = new Date().toLocaleString("zh-CN");
-    const stored = localStorage.getItem("cases");
-    if (!stored) return;
-    const cases = JSON.parse(stored);
-    const timeline = cases[id].timeline || [];
-    timeline.push(`↩️ 用户撤回结案申请 · ${now}`);
+    const timeline = [...(caseData?.timeline || []), `↩️ 用户撤回结案申请 · ${now}`];
     updateCase({ status: "协商中", timeline });
   };
- 
+
   const handleOpenDM = () => {
     if (!user) {
       router.push("/login");
       return;
     }
- 
+
     const threadKey = `dm_${id}_${encodeURIComponent(user)}`;
     const existing = localStorage.getItem(threadKey);
- 
+
     if (!existing && caseData) {
       const posterId = caseData.creator || "system";
       const newThread = {
@@ -106,24 +122,34 @@ export default function CaseDetailPage() {
         lastReadBy: {},
       };
       localStorage.setItem(threadKey, JSON.stringify(newThread));
- 
-      const stored = localStorage.getItem("cases");
-      if (stored) {
-        const cases = JSON.parse(stored);
-        if (cases[id]) {
-          if (!cases[id].timeline) cases[id].timeline = [];
-          const now = new Date().toLocaleString("zh-CN");
-          cases[id].timeline.push(`💬 ${user} 发起了私信联系 · ${now}`);
-          if (cases[id].status === "未回应") cases[id].status = "协商中";
-          localStorage.setItem("cases", JSON.stringify(cases));
-          setCaseData({ ...cases[id] });
-        }
-      }
+
+      const now = new Date().toLocaleString("zh-CN");
+      const timeline = [...(caseData?.timeline || []), `💬 ${user} 发起了私信联系 · ${now}`];
+      const newStatus = caseData.status === "未回应" ? "协商中" : caseData.status;
+      updateCase({ timeline, status: newStatus });
     }
- 
+
     router.push(`/messages/${id}/${encodeURIComponent(user)}`);
   };
- 
+
+  const statusColor = (status: string) => {
+    if (status === "未回应") return "text-red-400 bg-red-500/10 border border-red-500/20";
+    if (status === "协商中") return "text-yellow-400 bg-yellow-500/10 border border-yellow-500/20";
+    if (status === "申请结案中") return "text-orange-400 bg-orange-500/10 border border-orange-500/20";
+    return "text-green-400 bg-green-500/10 border border-green-500/20";
+  };
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "日期未知";
+    return new Date(dateStr).toLocaleDateString("zh-CN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   if (!caseData) {
     return (
       <main className="min-h-screen bg-[#0B0F14] text-white flex items-center justify-center">
@@ -137,56 +163,44 @@ export default function CaseDetailPage() {
       </main>
     );
   }
- 
+
   const isSystemCase = caseData.creator === "system" || !caseData.creator;
   const isCreator = !isSystemCase && caseData.creator === user;
   const isOtherUser = user && (isSystemCase || user !== caseData.creator);
   const isPaid = caseData.paid === true || isSystemCase;
- 
-  // block non-creators from seeing unpaid cases
+
   if (!isPaid && !isCreator) {
     return (
       <main className="min-h-screen bg-[#0B0F14] text-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-white/40 text-5xl mb-4">🔒</div>
           <div className="text-white/60 mb-4">该记录尚未公开</div>
-          <Link href="/" className="text-blue-400 hover:text-blue-300 text-sm">
-            ← 返回首页
-          </Link>
+          <Link href="/" className="text-blue-400 hover:text-blue-300 text-sm">← 返回首页</Link>
         </div>
       </main>
     );
   }
- 
+
   return (
     <main className="min-h-screen bg-[#0B0F14] text-white">
       <div className="max-w-[1000px] mx-auto px-8 py-16">
- 
-        {/* BACK */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-white/40 hover:text-white/70 text-sm mb-10 transition"
-        >
+
+        <Link href="/" className="inline-flex items-center gap-2 text-white/40 hover:text-white/70 text-sm mb-10 transition">
           ← 返回记录列表
         </Link>
- 
-        {/* UNPAID BANNER - only show to creator */}
+
         {!isPaid && isCreator && (
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl px-6 py-5 mb-6 flex items-center justify-between">
             <div>
               <div className="text-yellow-400 font-medium mb-1">⚠️ 此记录尚未付款</div>
               <div className="text-yellow-400/60 text-sm">完成付款后记录将正式公开，目前仅您可见。</div>
             </div>
-            <Link
-              href={`/pricing?caseId=${id}`}
-              className="bg-yellow-500 hover:bg-yellow-400 text-black px-5 py-2.5 rounded-xl text-sm font-medium transition shrink-0 ml-4"
-            >
+            <Link href={`/pricing?caseId=${id}`} className="bg-yellow-500 hover:bg-yellow-400 text-black px-5 py-2.5 rounded-xl text-sm font-medium transition shrink-0 ml-4">
               去付款
             </Link>
           </div>
         )}
- 
-        {/* HEADER */}
+
         <div className="bg-[#111827] border border-white/10 rounded-2xl p-8 mb-6">
           <div className="flex justify-between items-start mb-6">
             <div>
@@ -202,20 +216,14 @@ export default function CaseDetailPage() {
             <span>发布时间：<span className="text-white/60">{formatDate(caseData.date)}</span></span>
           </div>
         </div>
- 
-        {/* DESCRIPTION */}
+
         <div className="bg-[#111827] border border-white/10 rounded-2xl p-8 mb-6">
-          <h2 className="text-xs font-medium text-white/50 mb-4 uppercase tracking-widest">
-            纠纷描述
-          </h2>
+          <h2 className="text-xs font-medium text-white/50 mb-4 uppercase tracking-widest">纠纷描述</h2>
           <p className="text-white/80 leading-relaxed text-base">{caseData.desc}</p>
         </div>
- 
-        {/* TIMELINE */}
+
         <div className="bg-[#111827] border border-white/10 rounded-2xl p-8 mb-6">
-          <h2 className="text-xs font-medium text-white/50 mb-6 uppercase tracking-widest">
-            时间线
-          </h2>
+          <h2 className="text-xs font-medium text-white/50 mb-6 uppercase tracking-widest">时间线</h2>
           {(caseData.timeline || []).length === 0 ? (
             <div className="text-white/30 text-sm">暂无进展记录</div>
           ) : (
@@ -223,73 +231,48 @@ export default function CaseDetailPage() {
               {(caseData.timeline || []).map((item, index) => (
                 <div key={index} className="flex gap-4 items-start">
                   <div className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                  <div className="text-white/70 text-sm leading-relaxed border-l border-white/10 pl-4">
-                    {item}
-                  </div>
+                  <div className="text-white/70 text-sm leading-relaxed border-l border-white/10 pl-4">{item}</div>
                 </div>
               ))}
             </div>
           )}
         </div>
- 
-        {/* ACTIONS - only show if paid */}
+
         {isPaid && (
           <div className="border-t border-white/10 pt-8 flex flex-wrap gap-4">
- 
             {isOtherUser && caseData.status !== "已解决" && (
-              <button
-                onClick={handleOpenDM}
-                className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-lg text-sm transition flex items-center gap-2"
-              >
+              <button onClick={handleOpenDM} className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-lg text-sm transition flex items-center gap-2">
                 我要回应
               </button>
             )}
- 
             {isCreator && (
-              <Link
-                href="/messages"
-                className="border border-blue-500/30 hover:border-blue-500/60 text-blue-400 px-6 py-3 rounded-lg text-sm transition flex items-center gap-2"
-              >
+              <Link href="/messages" className="border border-blue-500/30 hover:border-blue-500/60 text-blue-400 px-6 py-3 rounded-lg text-sm transition flex items-center gap-2">
                 我要回应
               </Link>
             )}
- 
             {caseData.status !== "已解决" && (
-              <Link
-                href={`/coordination?id=${id}`}
-                className="border border-white/20 hover:border-white/40 text-white/70 px-6 py-3 rounded-lg text-sm transition"
-              >
+              <Link href={`/coordination?id=${id}`} className="border border-white/20 hover:border-white/40 text-white/70 px-6 py-3 rounded-lg text-sm transition">
                 申请协调
               </Link>
             )}
- 
             {isCreator && caseData.status !== "已解决" && caseData.status !== "申请结案中" && (
-              <button
-                onClick={handleRequestClose}
-                className="bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-400 px-6 py-3 rounded-lg text-sm transition"
-              >
+              <button onClick={handleRequestClose} className="bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-400 px-6 py-3 rounded-lg text-sm transition">
                 申请结案
               </button>
             )}
- 
             {isCreator && caseData.status === "申请结案中" && (
-              <button
-                onClick={handleCancelClose}
-                className="border border-white/20 hover:border-white/40 text-white/60 px-6 py-3 rounded-lg text-sm transition"
-              >
+              <button onClick={handleCancelClose} className="border border-white/20 hover:border-white/40 text-white/60 px-6 py-3 rounded-lg text-sm transition">
                 撤回申请
               </button>
             )}
- 
             {caseData.status === "申请结案中" && (
               <div className="flex items-center gap-2 text-orange-400/70 text-sm px-4 py-3 bg-orange-500/5 border border-orange-500/20 rounded-lg">
                 ⏳ 结案申请审核中，请等待管理员处理
               </div>
             )}
- 
           </div>
         )}
- 
+
       </div>
     </main>
   );

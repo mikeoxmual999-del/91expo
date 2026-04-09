@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 
-// GET all paid cases
-export async function GET() {
+// GET all paid cases or single case by id
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (id) {
+      const [rows] = await pool.execute(
+        "SELECT * FROM cases WHERE id = ?",
+        [id]
+      );
+      const cases = rows as any[];
+      if (cases.length === 0) return NextResponse.json(null);
+      return NextResponse.json(cases[0]);
+    }
+
     const [rows] = await pool.execute(
       "SELECT * FROM cases WHERE paid = TRUE ORDER BY date DESC"
     );
