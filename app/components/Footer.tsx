@@ -21,7 +21,7 @@ export default function Footer() {
 
           {/* MIDDLE — LINKS */}
           <div>
-            <div className="text-xs text-white/60 uppercase tracking-widest mb-4 font-medium">
+            <div className="text-sm text-white font-semibold mb-4 tracking-wide">
               平台导航
             </div>
             <div className="flex flex-col gap-3">
@@ -35,7 +35,7 @@ export default function Footer() {
 
           {/* RIGHT — LEGAL */}
           <div>
-            <div className="text-xs text-white/60 uppercase tracking-widest mb-4 font-medium">
+            <div className="text-sm text-white font-semibold mb-4 tracking-wide">
               法律与支持
             </div>
             <div className="flex flex-col gap-3">
