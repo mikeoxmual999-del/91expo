@@ -73,14 +73,14 @@ export default function Navbar() {
             <Link href="/" className="text-white font-bold text-xl tracking-tight">
               91<span className="text-blue-300">记录</span>
             </Link>
-            <div className="hidden md:flex items-center gap-8">
+            <div className="hidden md:flex items-center gap-10">
               {navItems.map((item) => {
                 const active = pathname === item.href;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`text-sm font-medium transition relative pb-1 ${
+                    className={`text-base font-medium transition relative pb-1 ${
                       active
                         ? "text-white after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-blue-300 after:rounded-full"
                         : "text-white/60 hover:text-white"

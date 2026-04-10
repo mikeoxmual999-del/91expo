@@ -14,14 +14,14 @@ export default function Footer() {
             <Link href="/" className="text-white font-bold text-xl">
               91<span className="text-blue-300">记录</span>
             </Link>
-            <p className="text-white/40 text-sm mt-3 leading-relaxed max-w-[240px]">
+            <p className="text-white/60 text-sm mt-3 leading-relaxed max-w-[240px]">
               商业争议记录与协商平台。以事实为基础，推动问题透明解决。
             </p>
           </div>
 
           {/* MIDDLE — LINKS */}
           <div>
-            <div className="text-xs text-white/30 uppercase tracking-widest mb-4 font-medium">
+            <div className="text-xs text-white/60 uppercase tracking-widest mb-4 font-medium">
               平台导航
             </div>
             <div className="flex flex-col gap-3">
@@ -35,7 +35,7 @@ export default function Footer() {
 
           {/* RIGHT — LEGAL */}
           <div>
-            <div className="text-xs text-white/30 uppercase tracking-widest mb-4 font-medium">
+            <div className="text-xs text-white/60 uppercase tracking-widest mb-4 font-medium">
               法律与支持
             </div>
             <div className="flex flex-col gap-3">
