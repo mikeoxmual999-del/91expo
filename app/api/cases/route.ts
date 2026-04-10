@@ -26,6 +26,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(rows);
     }
 
+    const all = searchParams.get("all");
+    if (all === "true") {
+      const [rows] = await pool.execute(
+        "SELECT * FROM cases ORDER BY date DESC"
+      );
+      return NextResponse.json(rows);
+    }
+
     const [rows] = await pool.execute(
       "SELECT * FROM cases WHERE paid = TRUE ORDER BY date DESC"
     );

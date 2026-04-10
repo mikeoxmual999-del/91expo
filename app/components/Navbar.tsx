@@ -101,11 +101,11 @@ export default function Navbar() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="搜索企业 / 纠纷..."
-                className="bg-white/10 border border-white/20 rounded-l-lg px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-blue-300 w-44"
+                className="bg-white/10 border border-white/20 border-r-0 rounded-l-lg px-4 h-9 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-blue-300 w-44"
               />
               <button
                 type="submit"
-                className="bg-[#2B6CB0] hover:bg-[#2563a0] px-4 py-2 rounded-r-lg text-sm text-white"
+                className="bg-[#2B6CB0] hover:bg-[#2563a0] px-4 h-9 rounded-r-lg text-sm text-white shrink-0"
               >
                 搜索
               </button>
