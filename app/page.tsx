@@ -62,7 +62,6 @@ export default function HomePage() {
   useEffect(() => {
     const loadCases = async () => {
       try {
-        // try database first
         const res = await fetch("/api/cases");
         if (res.ok) {
           const data = await res.json();
@@ -71,14 +70,9 @@ export default function HomePage() {
               ...c,
               desc: c.description || c.desc || "",
               meta: c.date
-                ? new Date(c.date).toLocaleDateString("zh-CN", {
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit",
-                  })
+                ? new Date(c.date).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" })
                 : "日期未知",
             }));
-            // merge default cases with DB cases
             setCases([...defaultCases, ...arr]);
             return;
           }
@@ -87,44 +81,40 @@ export default function HomePage() {
         console.error("DB fetch failed, using localStorage", err);
       }
 
-      // fallback to localStorage
       const stored = localStorage.getItem("cases");
       if (stored) {
         try {
           const data = JSON.parse(stored);
           const arr = Object.entries(data)
             .map(([id, value]: any) => ({
-              id,
-              ...value,
+              id, ...value,
               meta: value.date
-                ? new Date(value.date).toLocaleDateString("zh-CN", {
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit",
-                  })
+                ? new Date(value.date).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" })
                 : "日期未知",
             }))
             .filter((c: any) => c.paid === true || c.creator === "system")
-            .sort((a: any, b: any) => {
-              if (!a.date) return 1;
-              if (!b.date) return -1;
-              return new Date(b.date).getTime() - new Date(a.date).getTime();
-            });
+            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
           setCases(arr.length > 0 ? arr : defaultCases);
         } catch {
           setCases(defaultCases);
         }
       }
     };
-
     loadCases();
   }, []);
 
   const statusColor = (status: string) => {
-    if (status === "未回应") return "text-red-400 bg-red-500/10 border border-red-500/20";
-    if (status === "协商中") return "text-yellow-400 bg-yellow-500/10 border border-yellow-500/20";
-    if (status === "申请结案中") return "text-orange-400 bg-orange-500/10 border border-orange-500/20";
-    return "text-green-400 bg-green-500/10 border border-green-500/20";
+    if (status === "未回应") return "bg-orange-50 text-orange-600 border border-orange-200";
+    if (status === "协商中") return "bg-blue-50 text-blue-600 border border-blue-200";
+    if (status === "申请结案中") return "bg-yellow-50 text-yellow-600 border border-yellow-200";
+    return "bg-green-50 text-green-600 border border-green-200";
+  };
+
+  const statusBar = (status: string) => {
+    if (status === "未回应") return "bg-orange-400";
+    if (status === "协商中") return "bg-blue-500";
+    if (status === "申请结案中") return "bg-yellow-400";
+    return "bg-green-500";
   };
 
   const latest = cases.slice(0, 5);
@@ -136,46 +126,34 @@ export default function HomePage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#0B0F14] text-white">
+    <main className="min-h-screen bg-[#F5F7FA] text-[#1F2937]">
 
       {/* HERO */}
-      <section>
+      <section className="bg-[#0F2A44]">
         <div className="max-w-[1400px] mx-auto px-8 py-20 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
 
           {/* LEFT */}
           <div>
-            <div className="text-blue-400 text-lg font-medium mb-4">
-              记录事实 · 提升透明
+            <div className="text-blue-300 text-sm font-medium mb-4 uppercase tracking-widest">
+              商业争议记录平台
             </div>
-
-            <div className="w-12 h-[4px] bg-blue-500 mb-6" />
-
-            <h1 className="text-5xl font-semibold leading-tight mb-5">
+            <div className="w-12 h-[4px] bg-blue-400 mb-6" />
+            <h1 className="text-5xl font-bold leading-tight mb-5 text-white">
               让每一条纠纷
               <br />
               都有记录与进展
             </h1>
-
             <p className="text-white/60 mb-8 max-w-xl leading-relaxed">
               以结构化方式记录纠纷信息，帮助信息被理解，并推动问题向解决发展。
             </p>
-
             <div className="flex gap-4">
-              <Link
-                href="/create"
-                className="inline-block bg-blue-600 hover:bg-blue-500 px-8 py-4 rounded-xl text-base font-medium transition"
-              >
+              <Link href="/create" className="inline-block bg-[#2B6CB0] hover:bg-[#2563a0] px-8 py-4 rounded-xl text-base font-medium transition text-white">
                 发布纠纷
               </Link>
-              <Link
-                href="/feed"
-                className="inline-block border border-white/20 hover:border-white/40 px-8 py-4 rounded-xl text-base font-medium transition text-white/70 hover:text-white"
-              >
+              <Link href="/feed" className="inline-block border border-white/30 hover:border-white/60 px-8 py-4 rounded-xl text-base font-medium transition text-white/80 hover:text-white">
                 浏览记录
               </Link>
             </div>
-
-            {/* STATS */}
             <div className="flex gap-8 mt-10">
               {stats.map((s) => (
                 <div key={s.label}>
@@ -187,23 +165,25 @@ export default function HomePage() {
           </div>
 
           {/* RIGHT SCROLL */}
-          <div className="h-[700px] overflow-hidden pointer-events-none">
-            <div className="animate-scroll flex flex-col gap-5">
+          <div className="h-[600px] overflow-hidden pointer-events-none">
+            <div className="animate-scroll flex flex-col gap-4">
               {[...cases, ...cases, ...cases].map((card, index) => (
                 <Link key={index} href={`/case/${card.id}`} className="pointer-events-auto">
-                  <div className="bg-[#111827] border border-white/10 rounded-xl p-6 hover:border-white/20 transition cursor-pointer">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="text-white font-medium">{card.company}</div>
-                        <div className="text-blue-400 font-semibold text-lg mt-1">{card.amount}</div>
+                  <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden hover:shadow-md transition cursor-pointer flex">
+                    <div className={`w-1 shrink-0 ${statusBar(card.status)}`} />
+                    <div className="p-5 flex-1">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <div className="text-[#1F2937] font-semibold text-sm">{card.company}</div>
+                          <div className="text-[#2B6CB0] font-bold mt-0.5">{card.amount}</div>
+                        </div>
+                        <div className={`text-xs px-2 py-0.5 rounded-full ${statusColor(card.status)}`}>
+                          {card.status}
+                        </div>
                       </div>
-                      <div className={`text-xs px-3 py-1 rounded-full ${statusColor(card.status)}`}>
-                        {card.status}
-                      </div>
+                      <div className="text-xs text-[#6B7280] mb-1">{card.type}</div>
+                      <div className="text-[#4B5563] text-xs leading-relaxed line-clamp-2">{card.desc}</div>
                     </div>
-                    <div className="text-xs text-white/50 mb-2">{card.type}</div>
-                    <div className="text-white/70 text-sm mb-3">{card.desc}</div>
-                    <div className="text-xs text-white/30">{card.meta}</div>
                   </div>
                 </Link>
               ))}
@@ -214,37 +194,37 @@ export default function HomePage() {
       </section>
 
       {/* LATEST FEED */}
-      <section className="pt-16 pb-20">
+      <section className="py-16">
         <div className="max-w-[1400px] mx-auto px-8">
-
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-medium">最新记录</h2>
-            <Link href="/feed" className="text-sm text-blue-400 hover:text-blue-300 transition">
+            <h2 className="text-xl font-bold text-[#0F2A44]">最新记录</h2>
+            <Link href="/feed" className="text-sm text-[#2B6CB0] hover:underline transition">
               查看全部 →
             </Link>
           </div>
-
           <div className="space-y-4">
             {latest.map((card) => (
               <Link key={card.id} href={`/case/${card.id}`}>
-                <div className="bg-[#111827] border border-white/10 rounded-xl p-6 hover:border-white/20 transition cursor-pointer">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <div className="text-white font-medium">{card.company}</div>
-                      <div className="text-blue-400 font-semibold text-lg mt-1">{card.amount}</div>
+                <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden hover:shadow-md transition cursor-pointer flex">
+                  <div className={`w-1 shrink-0 ${statusBar(card.status)}`} />
+                  <div className="p-6 flex-1">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="text-[#1F2937] font-semibold">{card.company}</div>
+                        <div className="text-[#2B6CB0] font-bold text-lg mt-1">{card.amount}</div>
+                      </div>
+                      <div className={`text-xs px-3 py-1 rounded-full ${statusColor(card.status)}`}>
+                        {card.status}
+                      </div>
                     </div>
-                    <div className={`text-xs px-3 py-1 rounded-full ${statusColor(card.status)}`}>
-                      {card.status}
-                    </div>
+                    <div className="text-xs text-[#6B7280] mb-2">{card.type}</div>
+                    <div className="text-[#4B5563] text-sm mb-3">{card.desc}</div>
+                    <div className="text-xs text-[#9CA3AF]">{card.meta}</div>
                   </div>
-                  <div className="text-xs text-white/50 mb-2">{card.type}</div>
-                  <div className="text-white/70 text-sm mb-3">{card.desc}</div>
-                  <div className="text-xs text-white/30">{card.meta}</div>
                 </div>
               </Link>
             ))}
           </div>
-
         </div>
       </section>
 
