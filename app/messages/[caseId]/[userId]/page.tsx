@@ -66,11 +66,9 @@ export default function DMPage() {
     const text = input.trim();
     setInput("");
 
-    // optimistic UI update
     const newMsg: Message = { sender: currentUser, text, timestamp: new Date().toISOString() };
     setMessages(prev => [...prev, newMsg]);
 
-    // save to DB
     try {
       await fetch("/api/messages", {
         method: "POST",
@@ -79,14 +77,14 @@ export default function DMPage() {
       });
     } catch {}
 
-    // also save to localStorage as backup
+    // localStorage backup
     const threadKey = `dm_${caseId}_${responderId}`;
     const stored = localStorage.getItem(threadKey);
     const thread = stored ? JSON.parse(stored) : { caseId, posterId, responderId, messages: [] };
     thread.messages.push(newMsg);
     localStorage.setItem(threadKey, JSON.stringify(thread));
 
-    // on first message — update case status
+    // only on first message — update case status and timeline ONCE
     if (isFirstMessage) {
       setStatusUpdated(true);
       const now = new Date().toLocaleString("zh-CN");
@@ -94,8 +92,12 @@ export default function DMPage() {
         const caseRes = await fetch(`/api/cases?id=${caseId}`);
         if (caseRes.ok) {
           const caseData = await caseRes.json();
-          if (caseData?.status === "未回应") {
-            const timeline = [...(JSON.parse(caseData.timeline || "[]")), `📩 ${currentUser} 发起了私信联系 · ${now}`];
+          const timelineArr = typeof caseData.timeline === "string"
+            ? JSON.parse(caseData.timeline)
+            : (caseData.timeline || []);
+          const alreadyHasDM = timelineArr.some((t: string) => t.includes("发起了私信联系"));
+          if (caseData?.status === "未回应" && !alreadyHasDM) {
+            const timeline = [...timelineArr, `🗨️ ${currentUser} 发起了私信联系 · ${now}`];
             await fetch("/api/cases", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
@@ -111,6 +113,8 @@ export default function DMPage() {
     month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
   });
 
+  const otherUser = currentUser === responderId ? posterId : responderId;
+
   return (
     <main className="min-h-screen bg-[#F5F7FA] text-[#1F2937] flex flex-col">
       <div className="max-w-[800px] w-full mx-auto px-6 py-10 flex flex-col flex-1">
@@ -122,7 +126,7 @@ export default function DMPage() {
         <div className="bg-white border border-[#E5E7EB] rounded-2xl px-6 py-4 mb-6 shadow-sm">
           <div className="text-xs text-[#9CA3AF] uppercase tracking-widest mb-1">私信对话</div>
           <div className="text-[#0F2A44] font-bold">{caseCompany || "加载中..."}</div>
-          <div className="text-xs text-[#6B7280] mt-1">与 <span className="text-[#2B6CB0] font-medium">{currentUser === responderId ? posterId : responderId}</span> 的私信</div>
+          <div className="text-xs text-[#6B7280] mt-1">与 <span className="text-[#2B6CB0] font-medium">{otherUser || "..."}</span> 的私信</div>
         </div>
 
         <div className="flex-1 bg-white border border-[#E5E7EB] rounded-2xl p-6 mb-4 overflow-y-auto min-h-[400px] max-h-[520px] flex flex-col gap-4 shadow-sm">
@@ -151,12 +155,19 @@ export default function DMPage() {
         </div>
 
         <div className="flex gap-3">
-          <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
             placeholder="输入消息..."
-            className="flex-1 bg-white border border-[#E5E7EB] px-4 py-3 rounded-xl text-[#1F2937] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#2B6CB0] transition text-sm shadow-sm" />
-          <button onClick={handleSend} disabled={!input.trim()}
-            className="bg-[#2B6CB0] hover:bg-[#2563a0] disabled:opacity-30 disabled:cursor-not-allowed px-6 py-3 rounded-xl text-sm transition text-white">
+            className="flex-1 bg-white border border-[#E5E7EB] px-4 py-3 rounded-xl text-[#1F2937] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#2B6CB0] transition text-sm shadow-sm"
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim()}
+            className="bg-[#2B6CB0] hover:bg-[#2563a0] disabled:opacity-30 disabled:cursor-not-allowed px-6 py-3 rounded-xl text-sm transition text-white"
+          >
             发送
           </button>
         </div>

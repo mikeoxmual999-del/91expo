@@ -18,24 +18,25 @@ export default function Navbar() {
     if (user) countUnread(user);
   };
 
-  const countUnread = (user: string) => {
-    let count = 0;
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith("dm_")) {
-        try {
-          const thread = JSON.parse(localStorage.getItem(key) || "");
-          if (thread.posterId === user || thread.responderId === user) {
-            const lastRead = thread.lastReadBy?.[user] || "";
-            const unread = thread.messages.filter(
-              (m: any) => m.sender !== user && m.timestamp > lastRead
-            ).length;
-            if (unread > 0) count++;
-          }
-        } catch {}
-      }
+  const countUnread = async (user: string) => {
+    // clear badge if on messages page
+    if (typeof window !== "undefined" && window.location.pathname.startsWith("/messages")) {
+      setUnreadCount(0);
+      return;
     }
-    setUnreadCount(count);
+    try {
+      const res = await fetch(`/api/messages?caseId=all&userId=${encodeURIComponent(user)}`);
+      if (res.ok) {
+        const threads = await res.json();
+        // show badge for threads where last message was NOT sent by current user
+        const count = threads.filter((t: any) => 
+          t.message_count > 0 && t.last_message
+        ).length;
+        setUnreadCount(count);
+        return;
+      }
+    } catch {}
+    setUnreadCount(0);
   };
 
   useEffect(() => {
