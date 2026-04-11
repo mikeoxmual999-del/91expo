@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-type DMThread = {
-  caseId: string;
-  posterId: string;
-  responderId: string;
-  messages: { sender: string; text: string; timestamp: string }[];
+type ThreadSummary = {
+  responder_id: string;
+  poster_id: string;
+  last_message: string;
+  last_timestamp: string;
+  message_count: number;
 };
 
 export default function InboxPage() {
@@ -18,59 +19,32 @@ export default function InboxPage() {
 
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [caseCompany, setCaseCompany] = useState("");
-  const [threads, setThreads] = useState<DMThread[]>([]);
+  const [threads, setThreads] = useState<ThreadSummary[]>([]);
 
   useEffect(() => {
     const user = localStorage.getItem("user");
     if (!user) { router.replace("/login"); return; }
     setCurrentUser(user);
 
-    const loadCompany = async () => {
+    const load = async () => {
       try {
-        const res = await fetch(`/api/cases?id=${caseId}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.company) { setCaseCompany(data.company); return; }
+        const caseRes = await fetch(`/api/cases?id=${caseId}`);
+        if (caseRes.ok) {
+          const data = await caseRes.json();
+          if (data?.company) setCaseCompany(data.company);
         }
       } catch {}
-      const cases = localStorage.getItem("cases");
-      if (cases) {
-        const data = JSON.parse(cases);
-        if (data[caseId]?.company) setCaseCompany(data[caseId].company);
-      }
+
+      try {
+        const res = await fetch(`/api/messages?caseId=${caseId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setThreads(data);
+        }
+      } catch {}
     };
-    loadCompany();
 
-    const found: DMThread[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith(`dm_${caseId}_`)) {
-        try {
-          const thread = JSON.parse(localStorage.getItem(key) || "");
-          // skip empty duplicate encoded keys
-          if (thread.messages.length > 0 || !key.includes("%")) {
-            found.push(thread);
-          }
-        } catch {}
-      }
-    }
-
-    // deduplicate by responderId, keep the one with messages
-    const deduped: Record<string, DMThread> = {};
-    found.forEach(t => {
-      const existing = deduped[t.responderId];
-      if (!existing || t.messages.length > existing.messages.length) {
-        deduped[t.responderId] = t;
-      }
-    });
-
-    const sorted = Object.values(deduped).sort((a, b) => {
-      const aLast = a.messages[a.messages.length - 1]?.timestamp || "";
-      const bLast = b.messages[b.messages.length - 1]?.timestamp || "";
-      return bLast.localeCompare(aLast);
-    });
-
-    setThreads(sorted);
+    load();
   }, [caseId]);
 
   const formatTime = (ts: string) => {
@@ -102,27 +76,23 @@ export default function InboxPage() {
         )}
 
         <div className="space-y-3">
-          {threads.map((thread, index) => {
-            const lastMsg = thread.messages[thread.messages.length - 1];
-            const otherUser = thread.responderId;
-            return (
-              <Link key={index} href={`/messages/${caseId}/${encodeURIComponent(otherUser)}`}>
-                <div className="bg-white border border-[#E5E7EB] rounded-xl px-6 py-5 hover:shadow-md transition cursor-pointer">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#9CA3AF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-                      </svg>
-                      <div className="text-[#1F2937] font-semibold text-sm">{otherUser}</div>
-                    </div>
-                    {lastMsg && <div className="text-xs text-[#9CA3AF]">{formatTime(lastMsg.timestamp)}</div>}
+          {threads.map((thread, index) => (
+            <Link key={index} href={`/messages/${caseId}/${encodeURIComponent(thread.responder_id)}`}>
+              <div className="bg-white border border-[#E5E7EB] rounded-xl px-6 py-5 hover:shadow-md transition cursor-pointer">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#9CA3AF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                    </svg>
+                    <div className="text-[#1F2937] font-semibold text-sm">{thread.responder_id}</div>
                   </div>
-                  <div className="text-[#6B7280] text-sm truncate pl-7">{lastMsg ? lastMsg.text : "暂无消息"}</div>
-                  <div className="text-xs text-[#9CA3AF] mt-2 pl-7">共 {thread.messages.length} 条消息</div>
+                  <div className="text-xs text-[#9CA3AF]">{formatTime(thread.last_timestamp)}</div>
                 </div>
-              </Link>
-            );
-          })}
+                <div className="text-[#6B7280] text-sm truncate pl-7">{thread.last_message || "暂无消息"}</div>
+                <div className="text-xs text-[#9CA3AF] mt-2 pl-7">共 {thread.message_count} 条消息</div>
+              </div>
+            </Link>
+          ))}
         </div>
 
       </div>
