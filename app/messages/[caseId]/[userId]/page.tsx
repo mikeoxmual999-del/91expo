@@ -103,7 +103,7 @@ export default function DMPage() {
         const cases = JSON.parse(storedCases);
         if (cases[caseId] && cases[caseId].status === "未回应") {
           if (!cases[caseId].timeline) cases[caseId].timeline = [];
-          cases[caseId].timeline.push(`💬 ${currentUser} 发起了私信联系 · ${now}`);
+          cases[caseId].timeline.push(`📩 ${currentUser} 发起了私信联系 · ${now}`);
           cases[caseId].status = "协商中";
           localStorage.setItem("cases", JSON.stringify(cases));
         }

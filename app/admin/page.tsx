@@ -148,7 +148,7 @@ export default function AdminPage() {
       paid: true,
       plan: "basic",
       duration: "permanent",
-      timeline: [`记录已创建 · ${now}`],
+      timeline: [`📋 管理员免费发布 · ${now}`],
     };
 
     // save to DB
@@ -411,14 +411,14 @@ export default function AdminPage() {
                 <div>
                   <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">纠纷类型</label>
                   <select value={postForm.type} onChange={(e) => setPostForm({ ...postForm, type: e.target.value })} className={`${inputClass} bg-[#0B0F14] cursor-pointer`}>
-                    <option value="">请选择类型</option>
-                    <option value="货款纠纷">货款纠纷</option>
-                    <option value="合同纠纷">合同纠纷</option>
-                    <option value="工程款">工程款</option>
-                    <option value="劳动争议">劳动争议</option>
-                    <option value="知识产权">知识产权</option>
-                    <option value="服务纠纷">服务纠纷</option>
-                    <option value="其他">其他</option>
+                    <option value="" style={{backgroundColor:"#0B0F14",color:"white"}}>请选择类型</option>
+                    <option value="货款纠纷" style={{backgroundColor:"#0B0F14",color:"white"}}>货款纠纷</option>
+                    <option value="合同纠纷" style={{backgroundColor:"#0B0F14",color:"white"}}>合同纠纷</option>
+                    <option value="工程款" style={{backgroundColor:"#0B0F14",color:"white"}}>工程款</option>
+                    <option value="劳动争议" style={{backgroundColor:"#0B0F14",color:"white"}}>劳动争议</option>
+                    <option value="知识产权" style={{backgroundColor:"#0B0F14",color:"white"}}>知识产权</option>
+                    <option value="服务纠纷" style={{backgroundColor:"#0B0F14",color:"white"}}>服务纠纷</option>
+                    <option value="其他" style={{backgroundColor:"#0B0F14",color:"white"}}>其他</option>
                   </select>
                 </div>
                 <div>
