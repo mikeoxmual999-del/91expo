@@ -61,7 +61,7 @@ export default function DMPage() {
 
   const handleSend = async () => {
     if (!input.trim() || !currentUser || !thread) return;
-    if (currentUser !== thread.posterId && currentUser !== thread.responderId) return;
+    // allow any logged in user to send in their thread
 
     const isFirstMessage = thread.messages.length === 0;
     const newMessage: Message = { sender: currentUser, text: input.trim(), timestamp: new Date().toISOString() };

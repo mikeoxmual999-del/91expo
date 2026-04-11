@@ -148,7 +148,7 @@ export default function AdminPage() {
       paid: true,
       plan: "basic",
       duration: "permanent",
-      timeline: [`📋 管理员免费发布 · ${now}`],
+      timeline: [`记录已创建 · ${now}`],
     };
 
     // save to DB
