@@ -19,19 +19,26 @@ export default function Navbar() {
   };
 
   const countUnread = async (user: string) => {
-    // clear badge if on messages page
+    // clear badge if on any messages page
     if (typeof window !== "undefined" && window.location.pathname.startsWith("/messages")) {
       setUnreadCount(0);
+      localStorage.setItem("dm_last_cleared", new Date().toISOString());
       return;
     }
+
+    // check if user has visited messages recently
+    const lastCleared = localStorage.getItem("dm_last_cleared") || "";
+
     try {
       const res = await fetch(`/api/messages?caseId=all&userId=${encodeURIComponent(user)}`);
       if (res.ok) {
         const threads = await res.json();
-        // show badge for threads where last message was NOT sent by current user
-        const count = threads.filter((t: any) => 
-          t.message_count > 0 && t.last_message
-        ).length;
+        // only show badge for threads with messages received AFTER last cleared
+        const count = threads.filter((t: any) => {
+          if (!t.message_count || !t.last_message) return false;
+          if (!lastCleared) return true;
+          return t.last_timestamp > lastCleared;
+        }).length;
         setUnreadCount(count);
         return;
       }
