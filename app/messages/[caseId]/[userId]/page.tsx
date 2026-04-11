@@ -17,6 +17,7 @@ export default function DMPage() {
   const [caseCompany, setCaseCompany] = useState<string>("");
   const [thread, setThread] = useState<DMThread | null>(null);
   const [input, setInput] = useState("");
+  const [statusUpdated, setStatusUpdated] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const threadKey = `dm_${caseId}_${responderId}`;
 
@@ -32,13 +33,21 @@ export default function DMPage() {
       let t: DMThread = JSON.parse(stored);
       t = markAsRead(t, user);
       setThread(t);
+      // if thread already has messages, mark status as already updated
+      if (t.messages.length > 0) setStatusUpdated(true);
     } else {
       const cases = localStorage.getItem("cases");
       if (!cases) return;
       const data = JSON.parse(cases);
       const caseData = data[caseId];
       if (!caseData) return;
-      const newThread: DMThread = { caseId, posterId: caseData.creator || "unknown", responderId, messages: [], lastReadBy: { [user]: new Date().toISOString() } };
+      const newThread: DMThread = {
+        caseId,
+        posterId: caseData.creator || "unknown",
+        responderId,
+        messages: [],
+        lastReadBy: { [user]: new Date().toISOString() },
+      };
       localStorage.setItem(threadKey, JSON.stringify(newThread));
       setThread(newThread);
     }
@@ -48,12 +57,24 @@ export default function DMPage() {
     const user = localStorage.getItem("user");
     if (!user) { router.replace("/login"); return; }
     setCurrentUser(user);
-    const cases = localStorage.getItem("cases");
-    if (cases) {
-      const data = JSON.parse(cases);
-      const caseData = data[caseId];
-      if (caseData) setCaseCompany(caseData.company);
-    }
+
+    // load case company from DB first, then localStorage
+    const loadCompany = async () => {
+      try {
+        const res = await fetch(`/api/cases?id=${caseId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.company) { setCaseCompany(data.company); return; }
+        }
+      } catch {}
+      const cases = localStorage.getItem("cases");
+      if (cases) {
+        const data = JSON.parse(cases);
+        if (data[caseId]?.company) setCaseCompany(data[caseId].company);
+      }
+    };
+
+    loadCompany();
     loadThread(user);
   }, [caseId, responderId]);
 
@@ -61,17 +82,21 @@ export default function DMPage() {
 
   const handleSend = async () => {
     if (!input.trim() || !currentUser || !thread) return;
-    // allow any logged in user to send in their thread
 
-    const isFirstMessage = thread.messages.length === 0;
+    const isFirstMessage = thread.messages.length === 0 && !statusUpdated;
     const newMessage: Message = { sender: currentUser, text: input.trim(), timestamp: new Date().toISOString() };
-    const updated: DMThread = { ...thread, messages: [...thread.messages, newMessage], lastReadBy: { ...thread.lastReadBy, [currentUser]: new Date().toISOString() } };
+    const updated: DMThread = {
+      ...thread,
+      messages: [...thread.messages, newMessage],
+      lastReadBy: { ...thread.lastReadBy, [currentUser]: new Date().toISOString() },
+    };
     localStorage.setItem(threadKey, JSON.stringify(updated));
     setThread(updated);
     setInput("");
 
-    // only on first message — update case status to 协商中
+    // only on first ever message — update case status to 协商中
     if (isFirstMessage) {
+      setStatusUpdated(true);
       const now = new Date().toLocaleString("zh-CN");
       const storedCases = localStorage.getItem("cases");
       if (storedCases) {
@@ -83,7 +108,6 @@ export default function DMPage() {
           localStorage.setItem("cases", JSON.stringify(cases));
         }
       }
-      // update DB
       try {
         const storedCases2 = localStorage.getItem("cases");
         if (storedCases2) {
@@ -100,32 +124,23 @@ export default function DMPage() {
     }
   };
 
-  const formatTime = (ts: string) => new Date(ts).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
-  const otherUser = currentUser === thread?.posterId ? thread?.responderId : thread?.posterId;
+  const formatTime = (ts: string) => new Date(ts).toLocaleString("zh-CN", {
+    month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  });
 
-  if (thread && currentUser && currentUser !== thread.posterId && currentUser !== thread.responderId) {
-    return (
-      <main className="min-h-screen bg-[#F5F7FA] flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-5xl mb-4">🔒</div>
-          <div className="text-[#6B7280] text-sm">你无权查看此对话</div>
-          <Link href="/" className="mt-6 inline-block text-[#2B6CB0] hover:underline text-sm">← 返回首页</Link>
-        </div>
-      </main>
-    );
-  }
+  const otherUser = currentUser === thread?.posterId ? thread?.responderId : thread?.posterId;
 
   return (
     <main className="min-h-screen bg-[#F5F7FA] text-[#1F2937] flex flex-col">
       <div className="max-w-[800px] w-full mx-auto px-6 py-10 flex flex-col flex-1">
 
-        <Link href="/messages" className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#1F2937] text-sm mb-8 transition">
-          ← 返回私信列表
+        <Link href={`/case/${caseId}`} className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#1F2937] text-sm mb-8 transition">
+          ← 返回案件详情
         </Link>
 
         <div className="bg-white border border-[#E5E7EB] rounded-2xl px-6 py-4 mb-6 shadow-sm">
           <div className="text-xs text-[#9CA3AF] uppercase tracking-widest mb-1">私信对话</div>
-          <div className="text-[#0F2A44] font-bold">{caseCompany}</div>
+          <div className="text-[#0F2A44] font-bold">{caseCompany || "加载中..."}</div>
           <div className="text-xs text-[#6B7280] mt-1">与 <span className="text-[#2B6CB0] font-medium">{otherUser || "..."}</span> 的私信</div>
         </div>
 
@@ -156,9 +171,19 @@ export default function DMPage() {
         </div>
 
         <div className="flex gap-3">
-          <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }} placeholder="输入消息..."
-            className="flex-1 bg-white border border-[#E5E7EB] px-4 py-3 rounded-xl text-[#1F2937] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#2B6CB0] transition text-sm shadow-sm" />
-          <button onClick={handleSend} disabled={!input.trim()} className="bg-[#2B6CB0] hover:bg-[#2563a0] disabled:opacity-30 disabled:cursor-not-allowed px-6 py-3 rounded-xl text-sm transition text-white">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+            placeholder="输入消息..."
+            className="flex-1 bg-white border border-[#E5E7EB] px-4 py-3 rounded-xl text-[#1F2937] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#2B6CB0] transition text-sm shadow-sm"
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim()}
+            className="bg-[#2B6CB0] hover:bg-[#2563a0] disabled:opacity-30 disabled:cursor-not-allowed px-6 py-3 rounded-xl text-sm transition text-white"
+          >
             发送
           </button>
         </div>
