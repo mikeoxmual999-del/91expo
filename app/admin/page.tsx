@@ -27,39 +27,33 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [input, setInput] = useState("");
   const [error, setError] = useState(false);
-  const [tab, setTab] = useState<"pending" | "all" | "dms" | "coordination">("pending");
+  const [tab, setTab] = useState<"pending" | "all" | "dms" | "coordination" | "post">("pending");
   const [cases, setCases] = useState<CaseItem[]>([]);
   const [dmThreads, setDmThreads] = useState<DMThread[]>([]);
   const [expandedDm, setExpandedDm] = useState<string | null>(null);
   const [coordRequests, setCoordRequests] = useState<CoordinationRequest[]>([]);
 
+  // FREE POST FORM
+  const [postForm, setPostForm] = useState({ company: "", amount: "", type: "", desc: "" });
+  const [posting, setPosting] = useState(false);
+  const [postSuccess, setPostSuccess] = useState(false);
+
   const loadCases = async () => {
-    // try DB first - admin gets ALL cases including unpaid
     try {
       const res = await fetch("/api/cases?all=true");
       if (res.ok) {
         const data = await res.json();
-        const arr = data.map((c: any) => ({
-          ...c,
-          desc: c.description || c.desc || "",
-        })).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const arr = data.map((c: any) => ({ ...c, desc: c.description || c.desc || "" }))
+          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setCases(arr);
         return;
       }
     } catch {}
-
-    // fallback to localStorage
     const stored = localStorage.getItem("cases");
     if (!stored) return;
     const data = JSON.parse(stored);
-    const all = Object.entries(data)
-      .map(([id, value]: any) => ({ id, ...value }))
-      .sort((a: any, b: any) => {
-        if (!a.date) return 1;
-        if (!b.date) return -1;
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-      });
-    setCases(all);
+    setCases(Object.entries(data).map(([id, value]: any) => ({ id, ...value }))
+      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()));
   };
 
   const loadDMs = () => {
@@ -67,10 +61,7 @@ export default function AdminPage() {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && key.startsWith("dm_")) {
-        try {
-          const thread = JSON.parse(localStorage.getItem(key) || "");
-          threads.push(thread);
-        } catch {}
+        try { threads.push(JSON.parse(localStorage.getItem(key) || "")); } catch {}
       }
     }
     threads.sort((a, b) => {
@@ -87,8 +78,7 @@ export default function AdminPage() {
     try {
       const data = JSON.parse(stored);
       setCoordRequests(data.sort((a: CoordinationRequest, b: CoordinationRequest) =>
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      ));
+        new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch {}
   };
 
@@ -102,48 +92,32 @@ export default function AdminPage() {
   };
 
   const handleApprove = async (id: string) => {
-    if (!confirm("确认批准结案？该记录将标记为已解决。")) return;
+    if (!confirm("确认批准结案？")) return;
     const now = new Date().toLocaleString("zh-CN");
     const c = cases.find(x => x.id === id);
     const timeline = [...(c?.timeline || []), `✅ 管理员已批准结案 · ${now}`];
-    try {
-      await fetch("/api/cases", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status: "已解决", timeline }) });
-    } catch {}
+    try { await fetch("/api/cases", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status: "已解决", timeline }) }); } catch {}
     const stored = localStorage.getItem("cases");
-    if (stored) {
-      const data = JSON.parse(stored);
-      if (data[id]) { data[id].timeline = timeline; data[id].status = "已解决"; localStorage.setItem("cases", JSON.stringify(data)); }
-    }
+    if (stored) { const data = JSON.parse(stored); if (data[id]) { data[id].timeline = timeline; data[id].status = "已解决"; localStorage.setItem("cases", JSON.stringify(data)); } }
     loadCases();
   };
 
   const handleReject = async (id: string) => {
-    if (!confirm("确认驳回结案申请？该记录将返回协商中状态。")) return;
+    if (!confirm("确认驳回结案申请？")) return;
     const now = new Date().toLocaleString("zh-CN");
     const c = cases.find(x => x.id === id);
-    const timeline = [...(c?.timeline || []), `❌ 管理员驳回结案申请，记录返回协商中 · ${now}`];
-    try {
-      await fetch("/api/cases", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status: "协商中", timeline }) });
-    } catch {}
+    const timeline = [...(c?.timeline || []), `❌ 管理员驳回结案申请 · ${now}`];
+    try { await fetch("/api/cases", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status: "协商中", timeline }) }); } catch {}
     const stored = localStorage.getItem("cases");
-    if (stored) {
-      const data = JSON.parse(stored);
-      if (data[id]) { data[id].timeline = timeline; data[id].status = "协商中"; localStorage.setItem("cases", JSON.stringify(data)); }
-    }
+    if (stored) { const data = JSON.parse(stored); if (data[id]) { data[id].timeline = timeline; data[id].status = "协商中"; localStorage.setItem("cases", JSON.stringify(data)); } }
     loadCases();
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("确认删除该记录？\n\n删除后将无法恢复。")) return;
-    try {
-      await fetch("/api/cases", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
-    } catch {}
+    if (!confirm("确认删除该记录？删除后将无法恢复。")) return;
+    try { await fetch("/api/cases", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }); } catch {}
     const stored = localStorage.getItem("cases");
-    if (stored) {
-      const data = JSON.parse(stored);
-      delete data[id];
-      localStorage.setItem("cases", JSON.stringify(data));
-    }
+    if (stored) { const data = JSON.parse(stored); delete data[id]; localStorage.setItem("cases", JSON.stringify(data)); }
     loadCases();
   };
 
@@ -152,6 +126,51 @@ export default function AdminPage() {
     const updated = coordRequests.filter((_, i) => i !== index);
     setCoordRequests(updated);
     localStorage.setItem("coordination_requests", JSON.stringify(updated));
+  };
+
+  const handleFreePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!postForm.company.trim() || !postForm.amount.trim() || !postForm.desc.trim()) {
+      alert("请填写企业名称、涉及金额及纠纷描述");
+      return;
+    }
+    setPosting(true);
+    const newId = Date.now().toString();
+    const now = new Date().toLocaleString("zh-CN");
+    const caseData = {
+      id: newId,
+      company: postForm.company.trim(),
+      amount: postForm.amount.trim(),
+      status: "未回应",
+      type: postForm.type || "未分类",
+      description: postForm.desc.trim(),
+      creator: "admin",
+      paid: true,
+      plan: "basic",
+      duration: "permanent",
+      timeline: [`📋 管理员免费发布 · ${now}`],
+    };
+
+    // save to DB
+    try {
+      await fetch("/api/cases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(caseData),
+      });
+    } catch {}
+
+    // save to localStorage
+    const stored = localStorage.getItem("cases");
+    const localCases = stored ? JSON.parse(stored) : {};
+    localCases[newId] = { ...caseData, desc: postForm.desc.trim(), date: new Date().toISOString() };
+    localStorage.setItem("cases", JSON.stringify(localCases));
+
+    setPostForm({ company: "", amount: "", type: "", desc: "" });
+    setPosting(false);
+    setPostSuccess(true);
+    setTimeout(() => setPostSuccess(false), 3000);
+    loadCases();
   };
 
   const statusColor = (status: string) => {
@@ -174,6 +193,8 @@ export default function AdminPage() {
   const getCaseCompany = (caseId: string) => cases.find((x) => x.id === caseId)?.company || caseId;
   const pending = cases.filter((c) => c.status === "申请结案中");
 
+  const inputClass = "w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500 transition text-sm";
+
   if (!authed) {
     return (
       <main className="min-h-screen bg-[#0B0F14] text-white flex items-center justify-center">
@@ -185,8 +206,7 @@ export default function AdminPage() {
           <div className="bg-[#111827] border border-white/10 rounded-2xl p-8 space-y-5">
             <div>
               <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">管理员密码</label>
-              <input type="password" value={input} onChange={(e) => { setInput(e.target.value); setError(false); }} onKeyDown={(e) => e.key === "Enter" && handleLogin()} placeholder="请输入密码"
-                className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500 transition text-sm" />
+              <input type="password" value={input} onChange={(e) => { setInput(e.target.value); setError(false); }} onKeyDown={(e) => e.key === "Enter" && handleLogin()} placeholder="请输入密码" className={inputClass} />
               {error && <p className="text-red-400 text-xs mt-2">密码错误，请重试</p>}
             </div>
             <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl text-sm font-medium transition">进入后台</button>
@@ -205,10 +225,7 @@ export default function AdminPage() {
             <div className="text-xs text-white/30 uppercase tracking-widest mb-1">管理员后台</div>
             <h1 className="text-2xl font-semibold">管理控制台</h1>
           </div>
-          <div className="flex items-center gap-4">
-            <Link href="/create" className="bg-blue-600 hover:bg-blue-500 px-5 py-2 rounded-lg text-sm transition">+ 发布记录</Link>
-            <button onClick={() => setAuthed(false)} className="text-sm text-white/30 hover:text-white/60 transition">退出后台</button>
-          </div>
+          <button onClick={() => setAuthed(false)} className="text-sm text-white/30 hover:text-white/60 transition">退出后台</button>
         </div>
 
         <div className="grid grid-cols-6 gap-4 mb-10">
@@ -250,6 +267,9 @@ export default function AdminPage() {
           </button>
           <button onClick={() => { setTab("coordination"); loadCoordination(); }} className={`px-5 py-2.5 rounded-lg text-sm border transition ${tab === "coordination" ? "bg-purple-600 border-purple-600 text-white" : "bg-white/5 border-white/10 text-white/50 hover:text-white"}`}>
             协调请求{coordRequests.length > 0 && <span className="ml-2 bg-purple-500 text-white text-xs px-1.5 py-0.5 rounded-full">{coordRequests.length}</span>}
+          </button>
+          <button onClick={() => setTab("post")} className={`px-5 py-2.5 rounded-lg text-sm border transition ${tab === "post" ? "bg-green-600 border-green-600 text-white" : "bg-white/5 border-white/10 text-white/50 hover:text-white"}`}>
+            ✍️ 免费发布
           </button>
         </div>
 
@@ -363,6 +383,54 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {tab === "post" && (
+          <div>
+            <div className="bg-[#111827] border border-green-500/20 rounded-2xl p-8">
+              <h2 className="text-lg font-semibold mb-2">免费发布记录</h2>
+              <p className="text-white/40 text-sm mb-8">以管理员身份直接发布，无需付款，立即公开。</p>
+
+              {postSuccess && (
+                <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-xl text-sm mb-6">
+                  ✅ 发布成功！记录已公开展示。
+                </div>
+              )}
+
+              <form onSubmit={handleFreePost} className="space-y-6">
+                <div>
+                  <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">企业名称 <span className="text-red-400">*</span></label>
+                  <input value={postForm.company} onChange={(e) => setPostForm({ ...postForm, company: e.target.value })} placeholder="例：深圳某贸易有限公司" className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">涉及金额 <span className="text-red-400">*</span></label>
+                  <input value={postForm.amount} onChange={(e) => setPostForm({ ...postForm, amount: e.target.value })} placeholder="例：¥120,000" className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">纠纷类型</label>
+                  <select value={postForm.type} onChange={(e) => setPostForm({ ...postForm, type: e.target.value })} className={`${inputClass} bg-[#0B0F14] cursor-pointer`}>
+                    <option value="">请选择类型</option>
+                    <option value="货款纠纷">货款纠纷</option>
+                    <option value="合同纠纷">合同纠纷</option>
+                    <option value="工程款">工程款</option>
+                    <option value="劳动争议">劳动争议</option>
+                    <option value="知识产权">知识产权</option>
+                    <option value="服务纠纷">服务纠纷</option>
+                    <option value="其他">其他</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">纠纷描述 <span className="text-red-400">*</span></label>
+                  <textarea value={postForm.desc} onChange={(e) => setPostForm({ ...postForm, desc: e.target.value })} placeholder="请简要描述纠纷经过..." rows={5} className={`${inputClass} resize-none`} />
+                  <div className="text-right text-xs text-white/20 mt-1">{postForm.desc.length} 字</div>
+                </div>
+                <div className="border-t border-white/10" />
+                <button type="submit" disabled={posting} className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed py-3 rounded-xl text-sm font-medium transition">
+                  {posting ? "发布中..." : "✍️ 立即免费发布"}
+                </button>
+              </form>
             </div>
           </div>
         )}

@@ -59,14 +59,45 @@ export default function DMPage() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [thread?.messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim() || !currentUser || !thread) return;
     if (currentUser !== thread.posterId && currentUser !== thread.responderId) return;
+
+    const isFirstMessage = thread.messages.length === 0;
     const newMessage: Message = { sender: currentUser, text: input.trim(), timestamp: new Date().toISOString() };
     const updated: DMThread = { ...thread, messages: [...thread.messages, newMessage], lastReadBy: { ...thread.lastReadBy, [currentUser]: new Date().toISOString() } };
     localStorage.setItem(threadKey, JSON.stringify(updated));
     setThread(updated);
     setInput("");
+
+    // only on first message — update case status to 协商中
+    if (isFirstMessage) {
+      const now = new Date().toLocaleString("zh-CN");
+      const storedCases = localStorage.getItem("cases");
+      if (storedCases) {
+        const cases = JSON.parse(storedCases);
+        if (cases[caseId] && cases[caseId].status === "未回应") {
+          if (!cases[caseId].timeline) cases[caseId].timeline = [];
+          cases[caseId].timeline.push(`💬 ${currentUser} 发起了私信联系 · ${now}`);
+          cases[caseId].status = "协商中";
+          localStorage.setItem("cases", JSON.stringify(cases));
+        }
+      }
+      // update DB
+      try {
+        const storedCases2 = localStorage.getItem("cases");
+        if (storedCases2) {
+          const cases2 = JSON.parse(storedCases2);
+          if (cases2[caseId]) {
+            await fetch("/api/cases", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: caseId, status: "协商中", timeline: cases2[caseId].timeline }),
+            });
+          }
+        }
+      } catch {}
+    }
   };
 
   const formatTime = (ts: string) => new Date(ts).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -125,7 +156,7 @@ export default function DMPage() {
         </div>
 
         <div className="flex gap-3">
-          <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSend()} placeholder="输入消息..."
+          <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }} placeholder="输入消息..."
             className="flex-1 bg-white border border-[#E5E7EB] px-4 py-3 rounded-xl text-[#1F2937] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#2B6CB0] transition text-sm shadow-sm" />
           <button onClick={handleSend} disabled={!input.trim()} className="bg-[#2B6CB0] hover:bg-[#2563a0] disabled:opacity-30 disabled:cursor-not-allowed px-6 py-3 rounded-xl text-sm transition text-white">
             发送
