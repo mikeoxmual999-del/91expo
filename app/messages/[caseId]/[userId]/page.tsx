@@ -129,7 +129,9 @@ export default function DMPage() {
         <div className="bg-white border border-[#E5E7EB] rounded-2xl px-5 md:px-6 py-4 mb-4 md:mb-6 shadow-sm">
           <div className="text-xs text-[#9CA3AF] uppercase tracking-widest mb-1">私信对话</div>
           <div className="text-[#0F2A44] font-bold">{caseCompany || "加载中..."}</div>
-          <div className="text-xs text-[#6B7280] mt-1">与 <span className="text-[#2B6CB0] font-medium">{otherUser || "..."}</span> 的私信</div>
+          <div className="text-xs text-[#6B7280] mt-1">
+            {currentUser === responderId ? "与发帖方的对话" : "与回应方的对话"}
+          </div>
         </div>
 
         <div className="flex-1 bg-white border border-[#E5E7EB] rounded-2xl p-4 md:p-6 mb-4 overflow-y-auto min-h-[350px] md:min-h-[400px] max-h-[480px] md:max-h-[520px] flex flex-col gap-3 md:gap-4 shadow-sm">
@@ -147,7 +149,7 @@ export default function DMPage() {
             const isMe = msg.sender === currentUser;
             return (
               <div key={index} className={`flex flex-col gap-1 ${isMe ? "items-end" : "items-start"}`}>
-                <div className="text-xs text-[#9CA3AF] px-1">{isMe ? "我" : msg.sender} · {formatTime(msg.timestamp)}</div>
+                <div className="text-xs text-[#9CA3AF] px-1">{isMe ? "我" : "对方"} · {formatTime(msg.timestamp)}</div>
                 <div className={`max-w-[80%] md:max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${isMe ? "bg-[#2B6CB0] text-white rounded-br-sm" : "bg-[#F3F4F6] text-[#1F2937] rounded-bl-sm"}`}>
                   {msg.text}
                 </div>

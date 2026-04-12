@@ -19,7 +19,7 @@ type CaseItem = {
 
 type Message = { sender: string; text: string; timestamp: string; };
 type DMThread = { caseId: string; posterId: string; responderId: string; messages: Message[]; };
-type CoordinationRequest = { caseId: string; amount: string; desc: string; contact: string; date: string; };
+type CoordinationRequest = { id?: number; caseId: string; amount: string; desc: string; contact: string; date: string; };
 
 const ADMIN_PASSWORD = "Baobei1109";
 
@@ -99,7 +99,23 @@ export default function AdminPage() {
     setDmThreads(threads);
   };
 
-  const loadCoordination = () => {
+  const loadCoordination = async () => {
+    try {
+      const res = await fetch("/api/coordination");
+      if (res.ok) {
+        const data = await res.json();
+        const mapped = data.map((r: any) => ({
+          id: r.id,
+          caseId: r.case_id,
+          amount: r.amount || "",
+          desc: r.description || "",
+          contact: r.contact || "",
+          date: r.date,
+        }));
+        setCoordRequests(mapped);
+        return;
+      }
+    } catch {}
     const stored = localStorage.getItem("coordination_requests");
     if (!stored) return;
     try {
@@ -148,8 +164,17 @@ export default function AdminPage() {
     loadCases();
   };
 
-  const handleDeleteCoord = (index: number) => {
+  const handleDeleteCoord = async (index: number, id?: number) => {
     if (!confirm("确认删除此协调请求？")) return;
+    if (id) {
+      try {
+        await fetch("/api/coordination", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+      } catch {}
+    }
     const updated = coordRequests.filter((_, i) => i !== index);
     setCoordRequests(updated);
     localStorage.setItem("coordination_requests", JSON.stringify(updated));
@@ -412,7 +437,7 @@ export default function AdminPage() {
                     <div className="text-xs text-white/25">提交于 {formatDate(req.date)}</div>
                     <div className="flex gap-3">
                       <Link href={`/case/${req.caseId}`} className="border border-white/20 hover:border-white/40 text-white/60 px-4 py-2 rounded-lg text-xs transition">查看案件</Link>
-                      <button onClick={() => handleDeleteCoord(index)} className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 px-4 py-2 rounded-lg text-xs transition">删除请求</button>
+                      <button onClick={() => handleDeleteCoord(index, req.id)} className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 px-4 py-2 rounded-lg text-xs transition">删除请求</button>
                     </div>
                   </div>
                 </div>
