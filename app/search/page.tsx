@@ -66,14 +66,14 @@ function SearchContent() {
 
   return (
     <main className="min-h-screen bg-[#F5F7FA] text-[#1F2937]">
-      <div className="max-w-[1000px] mx-auto px-8 py-16">
+      <div className="max-w-[1000px] mx-auto px-4 md:px-8 py-8 md:py-16">
 
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[#0F2A44] mb-2">搜索纠纷记录</h1>
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-xl md:text-2xl font-bold text-[#0F2A44] mb-2">搜索纠纷记录</h1>
           <p className="text-[#6B7280] text-sm">按企业名称、纠纷类型或关键词搜索</p>
         </div>
 
-        <div className="relative mb-10">
+        <div className="relative mb-6 md:mb-10">
           <input
             type="text"
             value={query}
@@ -106,18 +106,18 @@ function SearchContent() {
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-3 md:space-y-4">
           {filtered.map((card) => (
             <Link key={card.id} href={`/case/${card.id}`}>
               <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden hover:shadow-md transition cursor-pointer flex">
                 <div className={`w-1 shrink-0 ${statusBar(card.status)}`} />
-                <div className="p-6 flex-1">
-                  <div className="flex justify-between items-start mb-3">
+                <div className="p-4 md:p-6 flex-1">
+                  <div className="flex justify-between items-start gap-2 mb-2 md:mb-3">
                     <div>
-                      <div className="text-[#1F2937] font-semibold">{card.company}</div>
-                      <div className="text-[#2B6CB0] font-bold text-lg mt-1">{card.amount}</div>
+                      <div className="text-[#1F2937] font-semibold text-sm md:text-base truncate">{card.company}</div>
+                      <div className="text-[#2B6CB0] font-bold text-base md:text-lg mt-0.5 md:mt-1">{card.amount}</div>
                     </div>
-                    <div className={`text-xs px-3 py-1 rounded-full ${statusColor(card.status)}`}>{card.status}</div>
+                    <div className={`text-xs px-2 md:px-3 py-1 rounded-full shrink-0 ${statusColor(card.status)}`}>{card.status}</div>
                   </div>
                   <div className="text-xs text-[#6B7280] mb-2">{card.type}</div>
                   <div className="text-[#4B5563] text-sm mb-4">{card.desc}</div>

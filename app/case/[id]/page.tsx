@@ -199,7 +199,7 @@ export default function CaseDetailPage() {
               </button>
             )}
             {isCreator && (
-              <Link href="/messages" className="border border-[#2B6CB0] text-[#2B6CB0] hover:bg-blue-50 px-5 md:px-6 py-2.5 md:py-3 rounded-lg text-sm transition">
+              <Link href={`/messages/${id}/inbox`} className="border border-[#2B6CB0] text-[#2B6CB0] hover:bg-blue-50 px-5 md:px-6 py-2.5 md:py-3 rounded-lg text-sm transition">
                 查看回应
               </Link>
             )}
