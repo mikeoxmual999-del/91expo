@@ -41,9 +41,9 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen bg-[#F5F7FA] flex flex-col">
-      <div className="max-w-[420px] w-full mx-auto px-6 py-16">
+      <div className="max-w-[420px] w-full mx-auto px-4 py-10 md:py-16">
 
-        <Link href="/" className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#1F2937] text-sm mb-10 transition">
+        <Link href="/" className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#1F2937] text-sm mb-6 md:mb-10 transition">
           ← 返回首页
         </Link>
 
@@ -52,7 +52,7 @@ export default function LoginPage() {
           <p className="text-[#6B7280] text-sm">使用手机号进入平台，无需密码。</p>
         </div>
 
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 space-y-5 shadow-sm">
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 md:p-8 space-y-5 shadow-sm">
 
           <div>
             <label className="block text-xs text-[#6B7280] uppercase tracking-widest mb-2 font-medium">

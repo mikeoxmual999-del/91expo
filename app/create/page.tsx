@@ -37,13 +37,13 @@ export default function CreatePage() {
 
   return (
     <main className="min-h-screen bg-[#F5F7FA] text-[#1F2937]">
-      <div className="max-w-[700px] mx-auto px-8 py-16">
+      <div className="max-w-[700px] mx-auto px-4 md:px-8 py-8 md:py-16">
 
-        <Link href="/" className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#1F2937] text-sm mb-10 transition">
+        <Link href="/" className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#1F2937] text-sm mb-6 md:mb-10 transition">
           ← 返回首页
         </Link>
 
-        <div className="mb-8">
+        <div className="mb-6 md:mb-8">
           <h1 className="text-2xl font-bold text-[#0F2A44] mb-2">发布纠纷记录</h1>
           <p className="text-[#6B7280] text-sm">请如实填写纠纷信息，提交后选择发布方案完成付款后正式公开。</p>
         </div>
@@ -52,21 +52,21 @@ export default function CreatePage() {
         <div className="flex items-center gap-3 mb-8">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-[#2B6CB0] text-white text-xs flex items-center justify-center font-medium">1</div>
-            <span className="text-[#1F2937] text-sm font-medium">填写信息</span>
+            <span className="hidden sm:inline text-[#1F2937] text-sm font-medium">填写信息</span>
           </div>
           <div className="flex-1 h-px bg-[#E5E7EB]" />
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-[#E5E7EB] text-[#9CA3AF] text-xs flex items-center justify-center font-medium">2</div>
-            <span className="text-[#9CA3AF] text-sm">选择方案</span>
+            <span className="hidden sm:inline text-[#9CA3AF] text-sm">选择方案</span>
           </div>
           <div className="flex-1 h-px bg-[#E5E7EB]" />
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-[#E5E7EB] text-[#9CA3AF] text-xs flex items-center justify-center font-medium">3</div>
-            <span className="text-[#9CA3AF] text-sm">完成付款</span>
+            <span className="hidden sm:inline text-[#9CA3AF] text-sm">完成付款</span>
           </div>
         </div>
 
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-sm">
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 md:p-8 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-6">
 
             <div>

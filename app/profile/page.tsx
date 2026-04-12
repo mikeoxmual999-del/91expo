@@ -75,35 +75,35 @@ export default function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-[#F5F7FA] text-[#1F2937]">
-      <div className="max-w-[1000px] mx-auto px-8 py-16">
+      <div className="max-w-[1000px] mx-auto px-4 md:px-8 py-8 md:py-16">
 
-        <Link href="/" className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#1F2937] text-sm mb-10 transition">
+        <Link href="/" className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#1F2937] text-sm mb-6 md:mb-10 transition">
           ← 返回首页
         </Link>
 
-        <div className="mb-10">
+        <div className="mb-6 md:mb-10">
           <h1 className="text-2xl font-bold text-[#0F2A44] mb-2">我的账户</h1>
           <p className="text-[#6B7280]">管理你的账户与发布记录</p>
         </div>
 
         {/* USER INFO */}
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-6 mb-10 flex items-center justify-between shadow-sm">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 md:p-6 mb-6 md:mb-10 flex flex-col md:flex-row md:items-center gap-4 md:justify-between shadow-sm">
           <div>
             <div className="text-xs text-[#6B7280] uppercase tracking-widest mb-2 font-medium">当前账号（手机号）</div>
-            <div className="text-[#1F2937] font-semibold text-lg">{user}</div>
+            <div className="text-[#1F2937] font-semibold text-base md:text-lg break-all">{user}</div>
           </div>
-          <button onClick={handleLogout} className="bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 px-5 py-2 rounded-lg text-sm transition">
+          <button onClick={handleLogout} className="bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm transition shrink-0">
             退出登录
           </button>
         </div>
 
         {/* UNPAID CASES */}
         {unpaidCases.length > 0 && (
-          <div className="mb-10">
+          <div className="mb-6 md:mb-10">
             <h2 className="text-lg font-bold mb-4 text-yellow-600">⚠️ 待付款记录</h2>
             <div className="space-y-4">
               {unpaidCases.map((c) => (
-                <div key={c.id} className="bg-white border border-yellow-200 rounded-xl p-6 shadow-sm">
+                <div key={c.id} className="bg-white border border-yellow-200 rounded-xl p-4 md:p-6 shadow-sm">
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <div className="font-semibold text-[#1F2937]">{c.company}</div>
@@ -125,7 +125,7 @@ export default function ProfilePage() {
 
         {/* MY CASES */}
         <div>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4 md:mb-6">
             <h2 className="text-lg font-bold text-[#0F2A44]">我的发布</h2>
             <Link href="/create" className="text-sm bg-[#2B6CB0] hover:bg-[#2563a0] text-white px-4 py-2 rounded-lg transition">
               + 发布新记录
@@ -150,7 +150,7 @@ export default function ProfilePage() {
 
           <div className="space-y-4">
             {paidCases.map((c) => (
-              <div key={c.id} className="bg-white border border-[#E5E7EB] rounded-xl p-6 shadow-sm">
+              <div key={c.id} className="bg-white border border-[#E5E7EB] rounded-xl p-4 md:p-6 shadow-sm">
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <div className="font-semibold text-[#1F2937]">{c.company}</div>
