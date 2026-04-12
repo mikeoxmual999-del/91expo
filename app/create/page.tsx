@@ -14,6 +14,15 @@ export default function CreatePage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
+  function handleAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
+    // only allow numbers
+    const raw = e.target.value.replace(/[^0-9]/g, "");
+    if (raw === "") { setForm({ ...form, amount: "" }); return; }
+    // format with commas and ¥ prefix
+    const formatted = "¥" + Number(raw).toLocaleString("zh-CN");
+    setForm({ ...form, amount: formatted });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const user = localStorage.getItem("user");
@@ -80,7 +89,15 @@ export default function CreatePage() {
               <label className="block text-xs text-[#6B7280] uppercase tracking-widest mb-2 font-medium">
                 涉及金额 <span className="text-red-500">*</span>
               </label>
-              <input name="amount" value={form.amount} placeholder="例：¥120,000" onChange={handleChange} className={inputClass} />
+              <input
+                name="amount"
+                value={form.amount}
+                placeholder="例：120000"
+                inputMode="numeric"
+                onChange={handleAmountChange}
+                className={inputClass}
+              />
+              <div className="text-xs text-[#9CA3AF] mt-1">仅输入数字，将自动添加 ¥ 符号</div>
             </div>
 
             <div>

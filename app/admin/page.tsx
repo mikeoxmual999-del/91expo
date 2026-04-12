@@ -200,6 +200,13 @@ export default function AdminPage() {
     loadCases();
   };
 
+  const handleAdminAmount = (val: string) => {
+    const raw = val.replace(/[^0-9]/g, "");
+    if (raw === "") { setPostForm(f => ({ ...f, amount: "" })); return; }
+    const formatted = "¥" + Number(raw).toLocaleString("zh-CN");
+    setPostForm(f => ({ ...f, amount: formatted }));
+  };
+
   const statusColor = (status: string) => {
     if (status === "未回应") return "text-red-400 bg-red-500/10 border border-red-500/20";
     if (status === "协商中") return "text-yellow-400 bg-yellow-500/10 border border-yellow-500/20";
@@ -433,7 +440,8 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">涉及金额 <span className="text-red-400">*</span></label>
-                  <input value={postForm.amount} onChange={(e) => setPostForm({ ...postForm, amount: e.target.value })} placeholder="例：¥120,000" className={inputClass} />
+                  <input value={postForm.amount} onChange={(e) => handleAdminAmount(e.target.value)} placeholder="例：120000" inputMode="numeric" className={inputClass} />
+                  <div className="text-xs text-white/20 mt-1">仅输入数字，将自动添加 ¥ 符号</div>
                 </div>
                 <div>
                   <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">纠纷类型</label>
