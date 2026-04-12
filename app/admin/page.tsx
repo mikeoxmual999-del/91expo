@@ -56,19 +56,46 @@ export default function AdminPage() {
       .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()));
   };
 
-  const loadDMs = () => {
+  const loadDMs = async () => {
+    try {
+      // load all threads from DB for all cases
+      const allCaseIds = cases.map(c => c.id);
+      const allThreads: DMThread[] = [];
+      for (const caseId of allCaseIds) {
+        const res = await fetch(`/api/messages?caseId=${caseId}`);
+        if (res.ok) {
+          const threads = await res.json();
+          for (const t of threads) {
+            // load messages for each thread
+            const msgRes = await fetch(`/api/messages?caseId=${caseId}&responderId=${encodeURIComponent(t.responder_id)}`);
+            if (msgRes.ok) {
+              const msgs = await msgRes.json();
+              allThreads.push({
+                caseId,
+                posterId: t.poster_id || "",
+                responderId: t.responder_id,
+                messages: msgs.map((m: any) => ({ sender: m.sender, text: m.text, timestamp: m.timestamp })),
+              });
+            }
+          }
+        }
+      }
+      allThreads.sort((a, b) => {
+        const aLast = a.messages[a.messages.length - 1]?.timestamp || "";
+        const bLast = b.messages[b.messages.length - 1]?.timestamp || "";
+        return bLast.localeCompare(aLast);
+      });
+      setDmThreads(allThreads);
+      return;
+    } catch {}
+    // fallback localStorage
     const threads: DMThread[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.startsWith("dm_")) {
+      if (key && key.startsWith("dm_") && !key.includes("%")) {
         try { threads.push(JSON.parse(localStorage.getItem(key) || "")); } catch {}
       }
     }
-    threads.sort((a, b) => {
-      const aLast = a.messages[a.messages.length - 1]?.timestamp || "";
-      const bLast = b.messages[b.messages.length - 1]?.timestamp || "";
-      return bLast.localeCompare(aLast);
-    });
     setDmThreads(threads);
   };
 
@@ -148,7 +175,7 @@ export default function AdminPage() {
       paid: true,
       plan: "basic",
       duration: "permanent",
-      timeline: [`📋 管理员免费发布 · ${now}`],
+      timeline: [`记录已创建 · ${now}`],
     };
 
     // save to DB

@@ -12,7 +12,6 @@ type ThreadSummary = {
   last_message: string;
   last_timestamp: string;
   message_count: number;
-  unread?: number;
 };
 
 export default function MessagesPage() {
@@ -20,25 +19,43 @@ export default function MessagesPage() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [readTimes, setReadTimes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const user = localStorage.getItem("user");
     if (!user) { router.replace("/login"); return; }
     setCurrentUser(user);
 
+    // load per-thread read times
+    const stored = localStorage.getItem("dm_read_times");
+    const times = stored ? JSON.parse(stored) : {};
+    setReadTimes(times);
+
+    // mark all as read now
+    const now = new Date().toISOString();
+    localStorage.setItem("dm_last_cleared", now);
+
     const load = async () => {
       try {
-        // get all threads where user is poster or responder
         const res = await fetch(`/api/messages?caseId=all&userId=${encodeURIComponent(user)}`);
         if (res.ok) {
           const data = await res.json();
           setThreads(data);
+
+          // mark each thread as read
+          const newTimes: Record<string, string> = { ...times };
+          data.forEach((t: ThreadSummary) => {
+            const key = `${t.case_id}_${t.responder_id}`;
+            newTimes[key] = now;
+          });
+          localStorage.setItem("dm_read_times", JSON.stringify(newTimes));
+          setReadTimes(newTimes);
           setLoading(false);
           return;
         }
       } catch {}
 
-      // fallback: scan localStorage
+      // fallback localStorage
       const found: ThreadSummary[] = [];
       const cases = localStorage.getItem("cases");
       const caseMap: Record<string, string> = {};
@@ -48,7 +65,7 @@ export default function MessagesPage() {
       }
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith("dm_") && !key.includes("%")) {
+        if (key && key.startsWith("dm_") && !key.includes("%") && !key.includes("read") && !key.includes("cleared")) {
           try {
             const thread = JSON.parse(localStorage.getItem(key) || "");
             if (thread.posterId === user || thread.responderId === user) {
@@ -74,6 +91,14 @@ export default function MessagesPage() {
     load();
   }, []);
 
+  const isUnread = (thread: ThreadSummary, user: string) => {
+    if (!thread.last_timestamp) return false;
+    const key = `${thread.case_id}_${thread.responder_id}`;
+    const lastRead = readTimes[key] || "";
+    // only unread if last message was NOT sent by current user AND after last read
+    return thread.last_timestamp > lastRead;
+  };
+
   const formatTime = (ts: string) => {
     if (!ts) return "";
     const date = new Date(ts);
@@ -85,7 +110,7 @@ export default function MessagesPage() {
 
   return (
     <main className="min-h-screen bg-[#F5F7FA] text-[#1F2937]">
-      <div className="max-w-[800px] mx-auto px-8 py-16">
+      <div className="max-w-[800px] mx-auto px-4 md:px-8 py-10 md:py-16">
 
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -107,17 +132,23 @@ export default function MessagesPage() {
         <div className="space-y-3">
           {threads.map((thread, index) => {
             const otherUser = currentUser === thread.responder_id ? thread.poster_id : thread.responder_id;
+            const unread = currentUser ? isUnread(thread, currentUser) : false;
             return (
               <Link key={index} href={`/messages/${thread.case_id}/${encodeURIComponent(thread.responder_id)}`}>
-                <div className="bg-white border border-[#E5E7EB] rounded-xl px-6 py-5 hover:shadow-md transition cursor-pointer">
+                <div className={`bg-white border rounded-xl px-5 md:px-6 py-4 md:py-5 hover:shadow-md transition cursor-pointer ${unread ? "border-[#2B6CB0]/40" : "border-[#E5E7EB]"}`}>
                   <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0">
                       <div className="text-xs text-[#9CA3AF] mb-1">📁 {thread.company || thread.case_id}</div>
-                      <div className="text-[#1F2937] font-semibold text-sm mb-2">{otherUser}</div>
-                      <div className="text-[#6B7280] text-sm truncate">{thread.last_message || "暂无消息"}</div>
+                      <div className={`text-sm mb-1.5 ${unread ? "text-[#1F2937] font-bold" : "text-[#1F2937] font-semibold"}`}>{otherUser}</div>
+                      <div className={`text-sm truncate ${unread ? "text-[#1F2937] font-medium" : "text-[#6B7280]"}`}>
+                        {thread.last_message || "暂无消息"}
+                      </div>
                     </div>
                     <div className="flex flex-col items-end gap-2 ml-4 shrink-0">
                       <div className="text-xs text-[#9CA3AF]">{formatTime(thread.last_timestamp)}</div>
+                      {unread && (
+                        <div className="bg-red-500 text-white text-xs w-2 h-2 rounded-full" />
+                      )}
                     </div>
                   </div>
                 </div>
