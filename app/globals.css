@@ -36,18 +36,18 @@ body {
   background: rgba(0, 0, 0, 0.25);
 }
 
-/* SCROLL ANIMATION */
+/* SCROLL ANIMATION - fixed pixel amount so speed stays constant */
 @keyframes scrollUp {
   0% {
     transform: translateY(0);
   }
   100% {
-    transform: translateY(-60%);
+    transform: translateY(-33.333%);
   }
 }
 
 .animate-scroll {
-  animation: scrollUp 12s linear infinite;
+  animation: scrollUp 20s linear infinite;
   will-change: transform;
 }
 
