@@ -15,6 +15,15 @@ export default function Navbar() {
 
   const checkLogin = () => {
     const user = localStorage.getItem("user");
+    const expiry = localStorage.getItem("user_expiry");
+    // check if session expired
+    if (user && expiry && new Date().getTime() > parseInt(expiry)) {
+      localStorage.removeItem("user");
+      localStorage.removeItem("user_expiry");
+      setIsLoggedIn(false);
+      setUnreadCount(0);
+      return;
+    }
     setIsLoggedIn(!!user);
     if (user) countUnread(user);
   };

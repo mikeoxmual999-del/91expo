@@ -79,6 +79,9 @@ export default function LoginPage() {
           body: JSON.stringify({ phone: fullPhone }),
         });
         localStorage.setItem("user", fullPhone);
+        // set 7 day expiry
+        const expiry = new Date().getTime() + 7 * 24 * 60 * 60 * 1000;
+        localStorage.setItem("user_expiry", expiry.toString());
         window.dispatchEvent(new Event("loginStateChanged"));
         router.replace("/");
       } else {
@@ -123,7 +126,7 @@ export default function LoginPage() {
                   </div>
                   <input value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
                     onKeyDown={(e) => e.key === "Enter" && handleSendCode()}
-                    placeholder="请输入手机号" type="tel" inputMode="numeric"
+                    placeholder="请输入手机号" type="tel" inputMode="numeric" autoComplete="tel"
                     className="flex-1 bg-[#F5F7FA] border border-[#E5E7EB] px-4 py-3 rounded-xl text-[#1F2937] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#2B6CB0] transition text-sm" />
                 </div>
               </div>
@@ -145,7 +148,7 @@ export default function LoginPage() {
                 <label className="block text-xs text-[#6B7280] uppercase tracking-widest mb-2 font-medium">验证码</label>
                 <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                   onKeyDown={(e) => e.key === "Enter" && handleVerify()}
-                  placeholder="请输入6位验证码" type="tel" inputMode="numeric" maxLength={6}
+                  placeholder="请输入6位验证码" type="tel" inputMode="numeric" maxLength={6} autoComplete="one-time-code"
                   className="w-full bg-[#F5F7FA] border border-[#E5E7EB] px-4 py-3 rounded-xl text-[#1F2937] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#2B6CB0] transition text-sm text-center tracking-[0.5em] text-lg font-bold" />
               </div>
 
