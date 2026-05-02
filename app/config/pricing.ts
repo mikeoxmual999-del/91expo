@@ -1,43 +1,31 @@
 export type PlanType = "basic" | "premium";
-export type DurationType = "7" | "30" | "permanent";
- 
+
 export const PRICING = {
-  basic: {
-    "7": 1,
-    "30": 1,
-    permanent: 1,
-  },
-  premium: {
-    "7": 1,
-    "30": 1,
-    permanent: 1,
-  },
+  basic: 15,
+  premium: 25, // 15 + 10 for 7-day featured
 };
- 
+
 export const PLAN_LABELS = {
-  basic: "基础发布",
-  premium: "置顶推广",
+  basic: "永久发布",
+  premium: "永久发布 + 置顶推广",
 };
- 
-export const DURATION_LABELS = {
-  "7": "7 天",
-  "30": "30 天",
-  permanent: "永久",
-};
- 
+
 export const PLAN_FEATURES = {
   basic: [
-    "显示在争议记录列表",
+    "永久显示在争议记录列表",
     "案件详情页完整展示",
     "接受回应与私信",
     "申请协调功能",
+    "可申请下架（需提供证据）",
   ],
   premium: [
-    "置顶显示在记录列表顶部",
-    "首页滚动展示栏优先展示",
+    "永久显示在争议记录列表",
+    "置顶显示 7 天",
+    "首页滚动展示栏优先展示 7 天",
+    "专属「置顶」标识",
     "案件详情页完整展示",
     "接受回应与私信",
     "申请协调功能",
-    "专属「推广」标识",
+    "可申请下架（需提供证据）",
   ],
 };
