@@ -27,19 +27,49 @@ function CheckoutContent() {
     const p = JSON.parse(stored);
     setPending(p);
 
-    // load case from DB first
     const loadCase = async () => {
+      let loadedCase = null;
+
+      // Try DB first
       try {
         const res = await fetch(`/api/cases?id=${caseId}`);
         if (res.ok) {
           const data = await res.json();
-          if (data?.id) { setCaseData(data); return; }
+          if (data?.id) loadedCase = data;
         }
       } catch {}
-      // fallback localStorage
-      const cases = localStorage.getItem("cases");
-      if (cases) setCaseData(JSON.parse(cases)[caseId]);
+
+      // Fallback to localStorage
+      if (!loadedCase) {
+        const cases = localStorage.getItem("cases");
+        if (cases) loadedCase = JSON.parse(cases)[caseId];
+      }
+
+      if (!loadedCase) return;
+      setCaseData(loadedCase);
+
+      // Save to DB immediately as unpaid so it shows in profile even if they abandon
+      const user = localStorage.getItem("user");
+      fetch("/api/cases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: caseId,
+          company: loadedCase.company,
+          amount: loadedCase.amount,
+          status: "待付款",
+          type: loadedCase.type || "未分类",
+          description: loadedCase.description || loadedCase.desc || "",
+          creator: loadedCase.creator || user || null,
+          paid: false,
+          plan: p.plan,
+          duration: p.duration,
+          expires_at: null,
+          timeline: loadedCase.timeline || [],
+        }),
+      }).catch(() => {}); // silently ignore if already exists
     };
+
     loadCase();
   }, [caseId]);
 
@@ -47,26 +77,6 @@ function CheckoutContent() {
     if (!pending || !caseData) return;
     setPaying(true);
     try {
-      // Save case to DB as unpaid first (ignore error if already exists)
-      await fetch("/api/cases", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: caseId,
-          company: caseData.company,
-          amount: caseData.amount,
-          status: "待付款",
-          type: caseData.type || "未分类",
-          description: caseData.description || caseData.desc || "",
-          creator: caseData.creator || null,
-          paid: false,
-          plan: pending.plan,
-          duration: pending.duration,
-          expires_at: null,
-          timeline: [],
-        }),
-      }).catch(() => {}); // silently ignore if already exists
-
       const res = await fetch("/api/stripe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
