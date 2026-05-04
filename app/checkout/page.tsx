@@ -47,6 +47,26 @@ function CheckoutContent() {
     if (!pending || !caseData) return;
     setPaying(true);
     try {
+      // Save case to DB as unpaid first (ignore error if already exists)
+      await fetch("/api/cases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: caseId,
+          company: caseData.company,
+          amount: caseData.amount,
+          status: "待付款",
+          type: caseData.type || "未分类",
+          description: caseData.description || caseData.desc || "",
+          creator: caseData.creator || null,
+          paid: false,
+          plan: pending.plan,
+          duration: pending.duration,
+          expires_at: null,
+          timeline: [],
+        }),
+      }).catch(() => {}); // silently ignore if already exists
+
       const res = await fetch("/api/stripe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

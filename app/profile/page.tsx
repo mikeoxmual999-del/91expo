@@ -15,6 +15,13 @@ type CaseItem = {
   date?: string;
   creator?: string;
   paid?: boolean;
+  plan?: "basic" | "premium";
+  duration?: string;
+};
+
+const PLAN_PRICES: Record<string, number> = {
+  basic: 15,
+  premium: 25,
 };
 
 export default function ProfilePage() {
@@ -53,6 +60,18 @@ export default function ProfilePage() {
     localStorage.removeItem("user");
     window.dispatchEvent(new Event("loginStateChanged"));
     router.replace("/");
+  };
+
+  const handleResumePay = (c: CaseItem) => {
+    const plan = c.plan || "basic";
+    const price = PLAN_PRICES[plan] ?? 15;
+    localStorage.setItem("pending_payment", JSON.stringify({
+      caseId: c.id,
+      plan,
+      duration: c.duration || "permanent",
+      price,
+    }));
+    router.push(`/checkout?caseId=${c.id}`);
   };
 
   const statusColor = (status: string) => {
@@ -114,9 +133,12 @@ export default function ProfilePage() {
                   <div className="text-xs text-[#6B7280] mb-2">{c.type}</div>
                   <div className="text-sm text-[#4B5563] mb-4 leading-relaxed">{c.desc}</div>
                   <div className="text-yellow-600/70 text-xs mb-4">完成付款后记录将正式公开展示</div>
-                  <Link href={`/pricing?caseId=${c.id}`} className="inline-block bg-yellow-500 hover:bg-yellow-400 text-white px-5 py-2 rounded-lg text-sm font-medium transition">
+                  <button
+                    onClick={() => handleResumePay(c)}
+                    className="inline-block bg-yellow-500 hover:bg-yellow-400 text-white px-5 py-2 rounded-lg text-sm font-medium transition"
+                  >
                     去付款 →
-                  </Link>
+                  </button>
                 </div>
               ))}
             </div>
