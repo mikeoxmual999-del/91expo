@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { PLAN_LABELS, DURATION_LABELS } from "@/app/config/pricing";
+import { PLAN_LABELS } from "@/app/config/pricing";
 
 function SuccessContent() {
   const searchParams = useSearchParams();
@@ -16,7 +16,7 @@ function SuccessContent() {
     if (!caseId || !plan || !duration) return;
     const expiresAt = duration === "permanent" ? null : new Date(Date.now() + parseInt(duration) * 24 * 60 * 60 * 1000).toISOString();
     const now = new Date().toLocaleString("zh-CN");
-    const timelineEntry = `✅ 付款成功 · 方案：${PLAN_LABELS[plan]} · 时长：${DURATION_LABELS[duration]} · ${now}`;
+    const timelineEntry = `✅ 付款成功 · 方案：${PLAN_LABELS[plan]} · 时长：${"永久"} · ${now}`;
     const stored = localStorage.getItem("cases");
     if (stored) {
       const cases = JSON.parse(stored);
@@ -54,7 +54,7 @@ function SuccessContent() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-[#6B7280]">展示时长</span>
-              <span className="text-[#1F2937]">{DURATION_LABELS[duration]}</span>
+              <span className="text-[#1F2937]">{"永久"}</span>
             </div>
           </div>
         )}
