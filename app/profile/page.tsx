@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { PRICING } from "@/app/config/pricing";
 
 type CaseItem = {
   id: string;
@@ -19,15 +20,11 @@ type CaseItem = {
   duration?: string;
 };
 
-const PLAN_PRICES: Record<string, number> = {
-  basic: 15,
-  premium: 25,
-};
-
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<string | null>(null);
   const [cases, setCases] = useState<CaseItem[]>([]);
+  const [cancelling, setCancelling] = useState<string | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -64,7 +61,7 @@ export default function ProfilePage() {
 
   const handleResumePay = (c: CaseItem) => {
     const plan = c.plan || "basic";
-    const price = PLAN_PRICES[plan] ?? 15;
+    const price = PRICING[plan] ?? PRICING.basic;
     localStorage.setItem("pending_payment", JSON.stringify({
       caseId: c.id,
       plan,
@@ -72,6 +69,31 @@ export default function ProfilePage() {
       price,
     }));
     router.push(`/checkout?caseId=${c.id}`);
+  };
+
+  const handleCancel = async (c: CaseItem) => {
+    if (!confirm(`确定要取消并删除「${c.company}」的纠纷记录吗？\nAre you sure you want to cancel and delete this record?`)) return;
+    setCancelling(c.id);
+    try {
+      await fetch("/api/cases", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: c.id }),
+      });
+      // remove from localStorage too
+      const stored = localStorage.getItem("cases");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        delete parsed[c.id];
+        localStorage.setItem("cases", JSON.stringify(parsed));
+      }
+      localStorage.removeItem("pending_payment");
+      setCases(prev => prev.filter(item => item.id !== c.id));
+    } catch (err) {
+      console.error("Cancel failed", err);
+      alert("删除失败，请重试 / Delete failed, please try again");
+    }
+    setCancelling(null);
   };
 
   const statusColor = (status: string) => {
@@ -108,7 +130,7 @@ export default function ProfilePage() {
         {/* USER INFO */}
         <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 md:p-6 mb-6 md:mb-10 flex flex-col md:flex-row md:items-center gap-4 md:justify-between shadow-sm">
           <div>
-            <div className="text-xs text-[#6B7280] uppercase tracking-widest mb-2 font-medium">当前账号（手机号）</div>
+            <div className="text-xs text-[#6B7280] uppercase tracking-widest mb-2 font-medium">当前账号</div>
             <div className="text-[#1F2937] font-semibold text-base md:text-lg break-all">{user}</div>
           </div>
           <button onClick={handleLogout} className="bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm transition shrink-0">
@@ -133,12 +155,21 @@ export default function ProfilePage() {
                   <div className="text-xs text-[#6B7280] mb-2">{c.type}</div>
                   <div className="text-sm text-[#4B5563] mb-4 leading-relaxed">{c.desc}</div>
                   <div className="text-yellow-600/70 text-xs mb-4">完成付款后记录将正式公开展示</div>
-                  <button
-                    onClick={() => handleResumePay(c)}
-                    className="inline-block bg-yellow-500 hover:bg-yellow-400 text-white px-5 py-2 rounded-lg text-sm font-medium transition"
-                  >
-                    去付款 →
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleResumePay(c)}
+                      className="bg-yellow-500 hover:bg-yellow-400 text-white px-5 py-2 rounded-lg text-sm font-medium transition"
+                    >
+                      去付款 →
+                    </button>
+                    <button
+                      onClick={() => handleCancel(c)}
+                      disabled={cancelling === c.id}
+                      className="bg-white hover:bg-red-50 border border-red-200 text-red-500 hover:text-red-600 px-5 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50"
+                    >
+                      {cancelling === c.id ? "删除中..." : "取消发布"}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
