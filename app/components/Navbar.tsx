@@ -11,21 +11,25 @@ export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [query, setQuery] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unpaidCount, setUnpaidCount] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const checkLogin = () => {
     const user = localStorage.getItem("user");
     const expiry = localStorage.getItem("user_expiry");
-    // check if session expired
     if (user && expiry && new Date().getTime() > parseInt(expiry)) {
       localStorage.removeItem("user");
       localStorage.removeItem("user_expiry");
       setIsLoggedIn(false);
       setUnreadCount(0);
+      setUnpaidCount(0);
       return;
     }
     setIsLoggedIn(!!user);
-    if (user) countUnread(user);
+    if (user) {
+      countUnread(user);
+      countUnpaid(user);
+    }
   };
 
   const countUnread = async (user: string) => {
@@ -51,6 +55,23 @@ export default function Navbar() {
     setUnreadCount(0);
   };
 
+  const countUnpaid = async (user: string) => {
+    if (typeof window !== "undefined" && window.location.pathname.startsWith("/profile")) {
+      setUnpaidCount(0);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/cases?creator=${encodeURIComponent(user)}`);
+      if (res.ok) {
+        const cases = await res.json();
+        const count = cases.filter((c: any) => !c.paid).length;
+        setUnpaidCount(count);
+        return;
+      }
+    } catch {}
+    setUnpaidCount(0);
+  };
+
   useEffect(() => {
     checkLogin();
     setMenuOpen(false);
@@ -59,8 +80,11 @@ export default function Navbar() {
   useEffect(() => {
     const interval = setInterval(() => {
       const user = localStorage.getItem("user");
-      if (user) countUnread(user);
-    }, 5000);
+      if (user) {
+        countUnread(user);
+        countUnpaid(user);
+      }
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -86,7 +110,7 @@ export default function Navbar() {
           {/* LEFT */}
           <div className="flex items-center gap-8 shrink-0">
             <Link href="/" className="text-white font-bold text-xl tracking-tight">
-              91<span className="text-blue-300">记录</span>
+              分鉴路
             </Link>
             <div className="hidden md:flex items-center gap-10">
               {navItems.map((item) => {
@@ -126,7 +150,14 @@ export default function Navbar() {
             )}
 
             {isLoggedIn ? (
-              <Link href="/profile" className="shrink-0 bg-white/10 hover:bg-white/20 transition text-sm px-4 py-2 rounded-lg text-white">我的</Link>
+              <Link href="/profile" className="relative shrink-0 bg-white/10 hover:bg-white/20 transition text-sm px-4 py-2 rounded-lg text-white">
+                我的
+                {unpaidCount > 0 && (
+                  <div className="absolute -top-1.5 -right-1.5 bg-yellow-400 text-[#0F2A44] text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold leading-none">
+                    {unpaidCount > 9 ? "9+" : unpaidCount}
+                  </div>
+                )}
+              </Link>
             ) : (
               <Link href="/login" className="shrink-0 bg-[#2B6CB0] hover:bg-[#2563a0] transition text-sm px-4 py-2 rounded-lg text-white font-medium">登录</Link>
             )}
@@ -147,7 +178,6 @@ export default function Navbar() {
               </Link>
             )}
 
-            {/* HAMBURGER */}
             <button onClick={() => setMenuOpen(!menuOpen)} className="text-white/60 hover:text-white p-1">
               {menuOpen ? (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -182,8 +212,13 @@ export default function Navbar() {
             </form>
             {isLoggedIn ? (
               <Link href="/profile" onClick={() => setMenuOpen(false)}
-                className="block px-4 py-3 rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 transition">
-                我的账户
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 transition">
+                <span>我的账户</span>
+                {unpaidCount > 0 && (
+                  <span className="bg-yellow-400 text-[#0F2A44] text-xs px-2 py-0.5 rounded-full font-bold">
+                    {unpaidCount} 待付款
+                  </span>
+                )}
               </Link>
             ) : (
               <Link href="/login" onClick={() => setMenuOpen(false)}
