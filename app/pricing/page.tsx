@@ -17,6 +17,7 @@ function PricingContent() {
   const [agreed, setAgreed] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const price = PRICING[selectedPlan];
+  const premiumAddon = PRICING.premium - PRICING.basic;
 
   useEffect(() => { if (!caseId) router.replace("/create"); }, [caseId]);
 
@@ -62,7 +63,7 @@ function PricingContent() {
                 </li>
               ))}
             </ul>
-            <div className="text-3xl font-bold text-[#0F2A44]">$15 <span className="text-[#6B7280] text-sm font-normal">USD</span></div>
+            <div className="text-3xl font-bold text-[#0F2A44]">${PRICING.basic} <span className="text-[#6B7280] text-sm font-normal">USD</span></div>
             <div className="text-xs text-[#9CA3AF] mt-1">一次性付款，永久有效</div>
           </button>
 
@@ -86,8 +87,8 @@ function PricingContent() {
               ))}
             </ul>
             <div>
-              <div className="text-3xl font-bold text-[#0F2A44]">$25 <span className="text-[#6B7280] text-sm font-normal">USD</span></div>
-              <div className="text-xs text-[#9CA3AF] mt-1">永久发布 $15 + 置顶 7 天 $10</div>
+              <div className="text-3xl font-bold text-[#0F2A44]">${PRICING.premium} <span className="text-[#6B7280] text-sm font-normal">USD</span></div>
+              <div className="text-xs text-[#9CA3AF] mt-1">永久发布 ${PRICING.basic} + 置顶 7 天 +${premiumAddon}</div>
             </div>
           </button>
 
@@ -103,7 +104,7 @@ function PricingContent() {
           {selectedPlan === "premium" && (
             <div className="flex justify-between items-center mb-3">
               <span className="text-[#6B7280] text-sm">其中置顶推广 7 天</span>
-              <span className="text-yellow-600 text-sm">+$10 USD</span>
+              <span className="text-yellow-600 text-sm">+${premiumAddon} USD</span>
             </div>
           )}
           <div className="border-t border-[#E5E7EB] mt-4 pt-4 flex justify-between items-center">

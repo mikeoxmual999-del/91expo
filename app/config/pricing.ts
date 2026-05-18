@@ -1,8 +1,8 @@
 export type PlanType = "basic" | "premium";
 
 export const PRICING = {
-  basic: 15,
-  premium: 25, // 15 + 10 for 7-day featured
+  basic: 150,
+  premium: 200, // 150 + 50 for 7-day featured
 };
 
 export const PLAN_LABELS = {
