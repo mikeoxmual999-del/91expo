@@ -17,13 +17,13 @@ type CaseItem = {
 
 function SearchContent() {
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState(searchParams.get("q") || "");
-  const [cases, setCases] = useState<CaseItem[]>([]);
+  const initialQuery = searchParams.get("q") || "";
+  const [query, setQuery] = useState(initialQuery);
 
-  // Update query when URL changes (e.g. navbar search)
   useEffect(() => {
     setQuery(searchParams.get("q") || "");
   }, [searchParams]);
+  const [cases, setCases] = useState<CaseItem[]>([]);
 
   useEffect(() => {
     const loadCases = async () => {

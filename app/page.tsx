@@ -17,14 +17,8 @@ type CaseItem = {
   creator?: string;
 };
 
-const defaultCases = [
-  { id: "default-1", company: "深圳某贸易公司", amount: "¥120,000", status: "未回应", type: "货款纠纷", desc: "交付完成后长期未付款，沟通无回应。", date: new Date().toISOString(), creator: "system", paid: true, meta: new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }) },
-  { id: "default-2", company: "上海某科技公司", amount: "¥45,000", status: "协商中", type: "合同纠纷", desc: "签订合同后未按约定交付，正在沟通。", date: new Date().toISOString(), creator: "system", paid: true, meta: new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }) },
-  { id: "default-3", company: "北京某工程公司", amount: "¥300,000", status: "已解决", type: "工程款", desc: "项目完成后尾款迟迟未结。", date: new Date().toISOString(), creator: "system", paid: true, meta: new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }) },
-];
-
 export default function HomePage() {
-  const [cases, setCases] = useState<CaseItem[]>(defaultCases);
+  const [cases, setCases] = useState<CaseItem[]>([]);
 
   useEffect(() => {
     const loadCases = async () => {
@@ -34,7 +28,7 @@ export default function HomePage() {
           const data = await res.json();
           if (data.length > 0) {
             const arr = data.map((c: any) => ({ ...c, desc: c.description || c.desc || "", meta: c.date ? new Date(c.date).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }) : "日期未知" }));
-            setCases([...defaultCases, ...arr]);
+            setCases(arr);
             return;
           }
         }
@@ -44,8 +38,8 @@ export default function HomePage() {
         try {
           const data = JSON.parse(stored);
           const arr = Object.entries(data).map(([id, value]: any) => ({ id, ...value, meta: value.date ? new Date(value.date).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }) : "日期未知" })).filter((c: any) => c.paid === true || c.creator === "system").sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          setCases(arr.length > 0 ? arr : defaultCases);
-        } catch { setCases(defaultCases); }
+          setCases(arr);
+        } catch { setCases([]); }
       }
     };
     loadCases();
@@ -78,8 +72,6 @@ export default function HomePage() {
       {/* HERO */}
       <section className="bg-[#0F2A44]">
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-12 md:py-20 grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 items-center">
-
-          {/* LEFT */}
           <div>
             <div className="text-blue-300 text-sm font-medium mb-4 uppercase tracking-widest">商业争议记录平台</div>
             <div className="w-12 h-[4px] bg-blue-400 mb-6" />
@@ -108,10 +100,8 @@ export default function HomePage() {
               ))}
             </div>
           </div>
-
-          {/* RIGHT SCROLL - hidden on mobile */}
           <div className="hidden md:block h-[600px] overflow-hidden pointer-events-none">
-            <div className="animate-scroll flex flex-col gap-4">
+            <div className="flex flex-col gap-4" style={{ animation: `scrollUp ${cases.length * 4}s linear infinite` }}>
               {[...cases, ...cases, ...cases].map((card, index) => (
                 <Link key={index} href={`/case/${card.id}`} className="pointer-events-auto">
                   <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden hover:shadow-md transition cursor-pointer flex">
@@ -132,7 +122,60 @@ export default function HomePage() {
               ))}
             </div>
           </div>
+        </div>
+      </section>
 
+      {/* ABOUT / INTRO */}
+      <section className="bg-white border-b border-[#E5E7EB]">
+        <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-12 md:py-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-20 items-center">
+
+            {/* LEFT — MISSION */}
+            <div>
+              <div className="text-[#2B6CB0] text-xs font-medium uppercase tracking-widest mb-4">关于我们</div>
+              <h2 className="text-2xl md:text-3xl font-bold text-[#0F2A44] mb-5 leading-snug">
+                每一位消费者的声音<br />都值得被听见
+              </h2>
+              <p className="text-[#4B5563] text-sm md:text-base leading-relaxed mb-4">
+                51记录是一个面向消费者的纠纷记录与追踪平台。我们致力于以透明、客观、结构化的方式记录真实消费纠纷，帮助消费者的诉求被企业和社会看见。
+              </p>
+              <p className="text-[#4B5563] text-sm md:text-base leading-relaxed">
+                无论纠纷金额大小，每一条记录都将永久公开保存，持续追踪进展，直至问题得到解决。
+              </p>
+            </div>
+
+            {/* RIGHT — TRUST BADGES */}
+            <div className="grid grid-cols-1 gap-4">
+              <div className="bg-[#F5F7FA] border border-[#E5E7EB] rounded-2xl p-5 flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-[#0F2A44] flex items-center justify-center shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M3 10h18M3 7l9-4 9 4M4 10h1v11H4M9 10h1v11H9M14 10h1v11H14M19 10h1v11H19" /></svg>
+                </div>
+                <div>
+                  <div className="font-semibold text-[#0F2A44] text-sm mb-1">美国注册企业</div>
+                  <div className="text-sm text-[#6B7280] leading-relaxed">51记录由美国注册公司运营，受美国联邦及州法律保护，平台运营合规透明。</div>
+                </div>
+              </div>
+              <div className="bg-[#F5F7FA] border border-[#E5E7EB] rounded-2xl p-5 flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-[#0F2A44] flex items-center justify-center shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 4v5c0 5-3.5 9.74-7 11-3.5-1.26-7-6-7-11V7l7-4z" /></svg>
+                </div>
+                <div>
+                  <div className="font-semibold text-[#0F2A44] text-sm mb-1">受美国法律保护</div>
+                  <div className="text-sm text-[#6B7280] leading-relaxed">平台依据美国《消费者保护法》及相关法规运营，用户发布的真实消费记录受言论自由保障。</div>
+                </div>
+              </div>
+              <div className="bg-[#F5F7FA] border border-[#E5E7EB] rounded-2xl p-5 flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-[#0F2A44] flex items-center justify-center shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                </div>
+                <div>
+                  <div className="font-semibold text-[#0F2A44] text-sm mb-1">数据安全与隐私</div>
+                  <div className="text-sm text-[#6B7280] leading-relaxed">我们严格保护用户隐私，所有支付均通过 Stripe 安全处理，平台不存储任何支付信息。</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
         </div>
       </section>
 

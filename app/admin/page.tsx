@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 type CaseItem = {
   id: string;
@@ -15,6 +15,7 @@ type CaseItem = {
   timeline?: string[];
   creator?: string;
   paid?: boolean;
+  images?: string[];
 };
 
 type Message = { sender: string; text: string; timestamp: string; };
@@ -32,19 +33,27 @@ export default function AdminPage() {
   const [dmThreads, setDmThreads] = useState<DMThread[]>([]);
   const [expandedDm, setExpandedDm] = useState<string | null>(null);
   const [coordRequests, setCoordRequests] = useState<CoordinationRequest[]>([]);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "amount" | "status">("date");
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
-  // FREE POST FORM
-  const [postForm, setPostForm] = useState({ company: "", amount: "", type: "", desc: "" });
+  const [postForm, setPostForm] = useState({ company: "", amount: "", type: "", desc: "", creator: "admin", plan: "basic" });
+  const [postImages, setPostImages] = useState<File[]>([]);
+  const [postPreviews, setPostPreviews] = useState<string[]>([]);
   const [posting, setPosting] = useState(false);
   const [postSuccess, setPostSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadCases = async () => {
     try {
       const res = await fetch("/api/cases?all=true");
       if (res.ok) {
         const data = await res.json();
-        const arr = data.map((c: any) => ({ ...c, desc: c.description || c.desc || "" }))
-          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const arr = data.map((c: any) => ({
+          ...c,
+          desc: c.description || c.desc || "",
+          images: typeof c.images === "string" ? JSON.parse(c.images) : c.images || [],
+        })).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setCases(arr);
         return;
       }
@@ -58,7 +67,6 @@ export default function AdminPage() {
 
   const loadDMs = async () => {
     try {
-      // load all threads from DB for all cases
       const allCaseIds = cases.map(c => c.id);
       const allThreads: DMThread[] = [];
       for (const caseId of allCaseIds) {
@@ -66,29 +74,18 @@ export default function AdminPage() {
         if (res.ok) {
           const threads = await res.json();
           for (const t of threads) {
-            // load messages for each thread
             const msgRes = await fetch(`/api/messages?caseId=${caseId}&responderId=${encodeURIComponent(t.responder_id)}`);
             if (msgRes.ok) {
               const msgs = await msgRes.json();
-              allThreads.push({
-                caseId,
-                posterId: t.poster_id || "",
-                responderId: t.responder_id,
-                messages: msgs.map((m: any) => ({ sender: m.sender, text: m.text, timestamp: m.timestamp })),
-              });
+              allThreads.push({ caseId, posterId: t.poster_id || "", responderId: t.responder_id, messages: msgs.map((m: any) => ({ sender: m.sender, text: m.text, timestamp: m.timestamp })) });
             }
           }
         }
       }
-      allThreads.sort((a, b) => {
-        const aLast = a.messages[a.messages.length - 1]?.timestamp || "";
-        const bLast = b.messages[b.messages.length - 1]?.timestamp || "";
-        return bLast.localeCompare(aLast);
-      });
+      allThreads.sort((a, b) => { const aLast = a.messages[a.messages.length - 1]?.timestamp || ""; const bLast = b.messages[b.messages.length - 1]?.timestamp || ""; return bLast.localeCompare(aLast); });
       setDmThreads(allThreads);
       return;
     } catch {}
-    // fallback localStorage
     const threads: DMThread[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -104,35 +101,18 @@ export default function AdminPage() {
       const res = await fetch("/api/coordination");
       if (res.ok) {
         const data = await res.json();
-        const mapped = data.map((r: any) => ({
-          id: r.id,
-          caseId: r.case_id,
-          amount: r.amount || "",
-          desc: r.description || "",
-          contact: r.contact || "",
-          date: r.date,
-        }));
-        setCoordRequests(mapped);
+        setCoordRequests(data.map((r: any) => ({ id: r.id, caseId: r.case_id, amount: r.amount || "", desc: r.description || "", contact: r.contact || "", date: r.date })));
         return;
       }
     } catch {}
     const stored = localStorage.getItem("coordination_requests");
     if (!stored) return;
-    try {
-      const data = JSON.parse(stored);
-      setCoordRequests(data.sort((a: CoordinationRequest, b: CoordinationRequest) =>
-        new Date(b.date).getTime() - new Date(a.date).getTime()));
-    } catch {}
+    try { setCoordRequests(JSON.parse(stored).sort((a: CoordinationRequest, b: CoordinationRequest) => new Date(b.date).getTime() - new Date(a.date).getTime())); } catch {}
   };
 
-  useEffect(() => {
-    if (authed) { loadCases(); loadDMs(); loadCoordination(); }
-  }, [authed]);
+  useEffect(() => { if (authed) { loadCases(); loadCoordination(); } }, [authed]);
 
-  const handleLogin = () => {
-    if (input === ADMIN_PASSWORD) { setAuthed(true); setError(false); }
-    else setError(true);
-  };
+  const handleLogin = () => { if (input === ADMIN_PASSWORD) { setAuthed(true); setError(false); } else setError(true); };
 
   const handleApprove = async (id: string) => {
     if (!confirm("确认批准结案？")) return;
@@ -140,8 +120,14 @@ export default function AdminPage() {
     const c = cases.find(x => x.id === id);
     const timeline = [...(c?.timeline || []), `✅ 管理员已批准结案 · ${now}`];
     try { await fetch("/api/cases", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status: "已解决", timeline }) }); } catch {}
-    const stored = localStorage.getItem("cases");
-    if (stored) { const data = JSON.parse(stored); if (data[id]) { data[id].timeline = timeline; data[id].status = "已解决"; localStorage.setItem("cases", JSON.stringify(data)); } }
+    loadCases();
+  };
+
+  const handleForceClose = async (id: string) => {
+    const now = new Date().toLocaleString("zh-CN");
+    const c = cases.find(x => x.id === id);
+    const timeline = [...(c?.timeline || []), `✅ 管理员已批准结案 · ${now}`];
+    try { await fetch("/api/cases", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status: "已解决", timeline }) }); } catch {}
     loadCases();
   };
 
@@ -151,76 +137,59 @@ export default function AdminPage() {
     const c = cases.find(x => x.id === id);
     const timeline = [...(c?.timeline || []), `❌ 管理员驳回结案申请 · ${now}`];
     try { await fetch("/api/cases", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status: "协商中", timeline }) }); } catch {}
-    const stored = localStorage.getItem("cases");
-    if (stored) { const data = JSON.parse(stored); if (data[id]) { data[id].timeline = timeline; data[id].status = "协商中"; localStorage.setItem("cases", JSON.stringify(data)); } }
     loadCases();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("确认删除该记录？删除后将无法恢复。")) return;
     try { await fetch("/api/cases", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }); } catch {}
-    const stored = localStorage.getItem("cases");
-    if (stored) { const data = JSON.parse(stored); delete data[id]; localStorage.setItem("cases", JSON.stringify(data)); }
     loadCases();
   };
 
   const handleDeleteCoord = async (index: number, id?: number) => {
     if (!confirm("确认删除此协调请求？")) return;
-    if (id) {
-      try {
-        await fetch("/api/coordination", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id }),
-        });
-      } catch {}
-    }
-    const updated = coordRequests.filter((_, i) => i !== index);
-    setCoordRequests(updated);
-    localStorage.setItem("coordination_requests", JSON.stringify(updated));
+    if (id) { try { await fetch("/api/coordination", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }); } catch {} }
+    setCoordRequests(coordRequests.filter((_, i) => i !== index));
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const remaining = 5 - postImages.length;
+    const toAdd = files.slice(0, remaining);
+    if (toAdd.some(f => f.size > 5 * 1024 * 1024)) { alert("每张图片不能超过 5MB"); return; }
+    setPostImages([...postImages, ...toAdd]);
+    setPostPreviews([...postPreviews, ...toAdd.map(f => URL.createObjectURL(f))]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removePostImage = (i: number) => {
+    setPostImages(postImages.filter((_, idx) => idx !== i));
+    setPostPreviews(postPreviews.filter((_, idx) => idx !== i));
   };
 
   const handleFreePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!postForm.company.trim() || !postForm.amount.trim() || !postForm.desc.trim()) {
-      alert("请填写企业名称、涉及金额及纠纷描述");
-      return;
-    }
+    if (!postForm.company.trim() || !postForm.amount.trim() || !postForm.desc.trim()) { alert("请填写企业名称、涉及金额及纠纷描述"); return; }
     setPosting(true);
     const newId = Date.now().toString();
     const now = new Date().toLocaleString("zh-CN");
-    const caseData = {
-      id: newId,
-      company: postForm.company.trim(),
-      amount: postForm.amount.trim(),
-      status: "未回应",
-      type: postForm.type || "未分类",
-      description: postForm.desc.trim(),
-      creator: "admin",
-      paid: true,
-      plan: "basic",
-      duration: "permanent",
-      timeline: [`记录已创建 · ${now}`],
-    };
+    const caseData = { id: newId, company: postForm.company.trim(), amount: postForm.amount.trim(), status: "未回应", type: postForm.type || "未分类", description: postForm.desc.trim(), creator: postForm.creator.trim() || "admin", paid: true, plan: postForm.plan, duration: "permanent", timeline: [`记录已创建 · ${now}`] };
+    try { await fetch("/api/cases", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(caseData) }); } catch {}
 
-    // save to DB
-    try {
-      await fetch("/api/cases", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(caseData),
-      });
-    } catch {}
+    if (postImages.length > 0) {
+      try {
+        const formData = new FormData();
+        formData.append("caseId", newId);
+        postImages.forEach(img => formData.append("images", img));
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+        const uploadData = await uploadRes.json();
+        if (uploadData.paths) { await fetch("/api/cases", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: newId, images: uploadData.paths }) }); }
+      } catch {}
+    }
 
-    // save to localStorage
-    const stored = localStorage.getItem("cases");
-    const localCases = stored ? JSON.parse(stored) : {};
-    localCases[newId] = { ...caseData, desc: postForm.desc.trim(), date: new Date().toISOString() };
-    localStorage.setItem("cases", JSON.stringify(localCases));
-
-    setPostForm({ company: "", amount: "", type: "", desc: "" });
-    setPosting(false);
-    setPostSuccess(true);
+    setPostForm({ company: "", amount: "", type: "", desc: "", creator: "admin", plan: "basic" });
+    setPostImages([]); setPostPreviews([]);
+    setPosting(false); setPostSuccess(true);
     setTimeout(() => setPostSuccess(false), 3000);
     loadCases();
   };
@@ -228,8 +197,7 @@ export default function AdminPage() {
   const handleAdminAmount = (val: string) => {
     const raw = val.replace(/[^0-9]/g, "");
     if (raw === "") { setPostForm(f => ({ ...f, amount: "" })); return; }
-    const formatted = "¥" + Number(raw).toLocaleString("zh-CN");
-    setPostForm(f => ({ ...f, amount: formatted }));
+    setPostForm(f => ({ ...f, amount: "¥" + Number(raw).toLocaleString("zh-CN") }));
   };
 
   const statusColor = (status: string) => {
@@ -239,18 +207,18 @@ export default function AdminPage() {
     return "text-green-400 bg-green-500/10 border border-green-500/20";
   };
 
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return "日期未知";
-    return new Date(dateStr).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
-  };
-
-  const formatTime = (ts: string) => {
-    if (!ts) return "";
-    return new Date(ts).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
-  };
-
+  const formatDate = (dateStr?: string) => { if (!dateStr) return "日期未知"; return new Date(dateStr).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" }); };
+  const formatTime = (ts: string) => { if (!ts) return ""; return new Date(ts).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }); };
   const getCaseCompany = (caseId: string) => cases.find((x) => x.id === caseId)?.company || caseId;
   const pending = cases.filter((c) => c.status === "申请结案中");
+
+  const filteredCases = cases
+    .filter(c => !search || c.company.toLowerCase().includes(search.toLowerCase()) || c.desc.toLowerCase().includes(search.toLowerCase()) || c.type.includes(search) || c.status.includes(search))
+    .sort((a, b) => {
+      if (sortBy === "amount") { const aNum = parseInt(a.amount.replace(/[^0-9]/g, "") || "0"); const bNum = parseInt(b.amount.replace(/[^0-9]/g, "") || "0"); return bNum - aNum; }
+      if (sortBy === "status") return a.status.localeCompare(b.status);
+      return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime();
+    });
 
   const inputClass = "w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500 transition text-sm";
 
@@ -277,7 +245,15 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen bg-[#0B0F14] text-white">
-      <div className="max-w-[1000px] mx-auto px-8 py-16">
+
+      {lightbox && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center px-4" onClick={() => setLightbox(null)}>
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white text-3xl">×</button>
+          <img src={lightbox} alt="" className="max-w-full max-h-[90vh] rounded-xl object-contain" onClick={e => e.stopPropagation()} />
+        </div>
+      )}
+
+      <div className="max-w-[1100px] mx-auto px-8 py-16">
 
         <div className="flex items-center justify-between mb-10">
           <div>
@@ -287,33 +263,17 @@ export default function AdminPage() {
           <button onClick={() => setAuthed(false)} className="text-sm text-white/30 hover:text-white/60 transition">退出后台</button>
         </div>
 
+        {/* STATS */}
         <div className="grid grid-cols-6 gap-4 mb-10">
-          <div className="bg-[#111827] border border-white/10 rounded-xl px-4 py-4 text-center">
-            <div className="text-2xl font-bold text-white mb-1">{cases.length}</div>
-            <div className="text-xs text-white/40">全部记录</div>
-          </div>
-          <div className="bg-[#111827] border border-orange-500/20 rounded-xl px-4 py-4 text-center">
-            <div className="text-2xl font-bold text-orange-400 mb-1">{pending.length}</div>
-            <div className="text-xs text-white/40">待审核结案</div>
-          </div>
-          <div className="bg-[#111827] border border-green-500/20 rounded-xl px-4 py-4 text-center">
-            <div className="text-2xl font-bold text-green-400 mb-1">{cases.filter((c) => c.status === "已解决").length}</div>
-            <div className="text-xs text-white/40">已解决</div>
-          </div>
-          <div className="bg-[#111827] border border-blue-500/20 rounded-xl px-4 py-4 text-center">
-            <div className="text-2xl font-bold text-blue-400 mb-1">{dmThreads.length}</div>
-            <div className="text-xs text-white/40">私信对话</div>
-          </div>
-          <div className="bg-[#111827] border border-purple-500/20 rounded-xl px-4 py-4 text-center">
-            <div className="text-2xl font-bold text-purple-400 mb-1">{coordRequests.length}</div>
-            <div className="text-xs text-white/40">协调请求</div>
-          </div>
-          <div className="bg-[#111827] border border-yellow-500/20 rounded-xl px-4 py-4 text-center">
-            <div className="text-2xl font-bold text-yellow-400 mb-1">{cases.filter(c => !c.paid && c.creator !== "system").length}</div>
-            <div className="text-xs text-white/40">待付款</div>
-          </div>
+          <div className="bg-[#111827] border border-white/10 rounded-xl px-4 py-4 text-center"><div className="text-2xl font-bold text-white mb-1">{cases.length}</div><div className="text-xs text-white/40">全部记录</div></div>
+          <div className="bg-[#111827] border border-orange-500/20 rounded-xl px-4 py-4 text-center"><div className="text-2xl font-bold text-orange-400 mb-1">{pending.length}</div><div className="text-xs text-white/40">待审核结案</div></div>
+          <div className="bg-[#111827] border border-green-500/20 rounded-xl px-4 py-4 text-center"><div className="text-2xl font-bold text-green-400 mb-1">{cases.filter(c => c.status === "已解决").length}</div><div className="text-xs text-white/40">已解决</div></div>
+          <div className="bg-[#111827] border border-blue-500/20 rounded-xl px-4 py-4 text-center"><div className="text-2xl font-bold text-blue-400 mb-1">{dmThreads.length}</div><div className="text-xs text-white/40">私信对话</div></div>
+          <div className="bg-[#111827] border border-purple-500/20 rounded-xl px-4 py-4 text-center"><div className="text-2xl font-bold text-purple-400 mb-1">{coordRequests.length}</div><div className="text-xs text-white/40">协调请求</div></div>
+          <div className="bg-[#111827] border border-yellow-500/20 rounded-xl px-4 py-4 text-center"><div className="text-2xl font-bold text-yellow-400 mb-1">{cases.filter(c => !c.paid && c.creator !== "system").length}</div><div className="text-xs text-white/40">待付款</div></div>
         </div>
 
+        {/* TABS */}
         <div className="flex gap-3 mb-8 flex-wrap">
           <button onClick={() => setTab("pending")} className={`px-5 py-2.5 rounded-lg text-sm border transition ${tab === "pending" ? "bg-orange-500/20 border-orange-500/40 text-orange-400" : "bg-white/5 border-white/10 text-white/50 hover:text-white"}`}>
             结案审核{pending.length > 0 && <span className="ml-2 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{pending.length}</span>}
@@ -332,6 +292,7 @@ export default function AdminPage() {
           </button>
         </div>
 
+        {/* PENDING */}
         {tab === "pending" && (
           <div>
             {pending.length === 0 && <div className="text-center py-24"><div className="text-white/40 text-sm">暂无待审核的结案申请</div></div>}
@@ -344,6 +305,15 @@ export default function AdminPage() {
                   </div>
                   <div className="text-xs text-white/40 mb-2">{c.type}</div>
                   <div className="text-sm text-white/60 mb-4 leading-relaxed">{c.desc}</div>
+                  {c.images && c.images.length > 0 && (
+                    <div className="grid grid-cols-5 gap-2 mb-4">
+                      {c.images.map((src, i) => (
+                        <div key={i} onClick={() => setLightbox(src)} className="aspect-square rounded-lg overflow-hidden border border-white/10 cursor-pointer hover:opacity-80 transition">
+                          <img src={src} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="text-xs text-white/25 mb-5 border-t border-white/5 pt-3">发布于 {formatDate(c.date)} · 创建者：{c.creator || "未知"}</div>
                   <div className="flex gap-3">
                     <button onClick={() => handleApprove(c.id)} className="bg-green-600 hover:bg-green-500 px-6 py-2.5 rounded-lg text-sm transition">✅ 批准结案</button>
@@ -355,11 +325,31 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* ALL CASES */}
         {tab === "all" && (
           <div>
-            {cases.length === 0 && <div className="text-center py-24"><div className="text-white/40 text-sm">平台暂无任何记录</div></div>}
+            {/* SEARCH + SORT */}
+            <div className="flex gap-3 mb-6">
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="搜索企业名称、描述、类型、状态..."
+                className="flex-1 bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500 transition text-sm"
+              />
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as any)}
+                className="bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl text-white/60 focus:outline-none focus:border-blue-500 transition text-sm cursor-pointer"
+              >
+                <option value="date" style={{backgroundColor:"#0B0F14"}}>按日期排序</option>
+                <option value="amount" style={{backgroundColor:"#0B0F14"}}>按金额排序</option>
+                <option value="status" style={{backgroundColor:"#0B0F14"}}>按状态排序</option>
+              </select>
+            </div>
+            <div className="text-xs text-white/30 mb-4">共 {filteredCases.length} 条记录{search && `（搜索：${search}）`}</div>
+            {filteredCases.length === 0 && <div className="text-center py-24"><div className="text-white/40 text-sm">未找到匹配记录</div></div>}
             <div className="space-y-4">
-              {cases.map((c) => (
+              {filteredCases.map((c) => (
                 <div key={c.id} className="bg-[#111827] border border-white/10 rounded-xl p-6">
                   <div className="flex justify-between items-start mb-3">
                     <div><div className="text-white font-semibold">{c.company}</div><div className="text-blue-400 font-bold mt-1">{c.amount}</div></div>
@@ -369,15 +359,29 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="text-xs text-white/40 mb-2">{c.type}</div>
-                  <div className="text-sm text-white/60 mb-4 leading-relaxed">{c.desc}</div>
-                  <div className="text-xs text-white/25 mb-5 border-t border-white/5 pt-3">发布于 {formatDate(c.date)} · 创建者：{c.creator || "未知"}</div>
-                  <button onClick={() => handleDelete(c.id)} className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 px-5 py-2 rounded-lg text-sm transition">🗑️ 删除记录</button>
+                  <div className="text-sm text-white/60 mb-3 leading-relaxed">{c.desc}</div>
+                  {c.images && c.images.length > 0 && (
+                    <div className="grid grid-cols-5 gap-2 mb-3">
+                      {c.images.map((src, i) => (
+                        <div key={i} onClick={() => setLightbox(src)} className="aspect-square rounded-lg overflow-hidden border border-white/10 cursor-pointer hover:opacity-80 transition">
+                          <img src={src} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="text-xs text-white/25 mb-4 border-t border-white/5 pt-3">发布于 {formatDate(c.date)} · 创建者：{c.creator || "未知"} · ID: {c.id}</div>
+                  <div className="flex gap-3 flex-wrap">
+                    <Link href={`/case/${c.id}`} className="border border-white/20 hover:border-white/40 text-white/60 px-4 py-2 rounded-lg text-xs transition">查看详情</Link>
+                    {c.status !== "已解决" && <button onClick={() => handleForceClose(c.id)} className="bg-green-600 hover:bg-green-500 px-5 py-2 rounded-lg text-sm transition">✅ 批准结案</button>}
+                    <button onClick={() => handleDelete(c.id)} className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 px-5 py-2 rounded-lg text-sm transition">🗑️ 删除记录</button>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
+        {/* DMS */}
         {tab === "dms" && (
           <div>
             {dmThreads.length === 0 && <div className="text-center py-24"><div className="text-white/40 text-sm">暂无私信记录</div></div>}
@@ -418,6 +422,7 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* COORDINATION */}
         {tab === "coordination" && (
           <div>
             {coordRequests.length === 0 && <div className="text-center py-24"><div className="text-white/40 text-sm">暂无协调请求</div></div>}
@@ -446,18 +451,13 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* FREE POST */}
         {tab === "post" && (
           <div>
             <div className="bg-[#111827] border border-green-500/20 rounded-2xl p-8">
               <h2 className="text-lg font-semibold mb-2">免费发布记录</h2>
               <p className="text-white/40 text-sm mb-8">以管理员身份直接发布，无需付款，立即公开。</p>
-
-              {postSuccess && (
-                <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-xl text-sm mb-6">
-                  ✅ 发布成功！记录已公开展示。
-                </div>
-              )}
-
+              {postSuccess && <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-xl text-sm mb-6">✅ 发布成功！记录已公开展示。</div>}
               <form onSubmit={handleFreePost} className="space-y-6">
                 <div>
                   <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">企业名称 <span className="text-red-400">*</span></label>
@@ -466,7 +466,6 @@ export default function AdminPage() {
                 <div>
                   <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">涉及金额 <span className="text-red-400">*</span></label>
                   <input value={postForm.amount} onChange={(e) => handleAdminAmount(e.target.value)} placeholder="例：120000" inputMode="numeric" className={inputClass} />
-                  <div className="text-xs text-white/20 mt-1">仅输入数字，将自动添加 ¥ 符号</div>
                 </div>
                 <div>
                   <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">纠纷类型</label>
@@ -485,6 +484,36 @@ export default function AdminPage() {
                   <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">纠纷描述 <span className="text-red-400">*</span></label>
                   <textarea value={postForm.desc} onChange={(e) => setPostForm({ ...postForm, desc: e.target.value })} placeholder="请简要描述纠纷经过..." rows={5} className={`${inputClass} resize-none`} />
                   <div className="text-right text-xs text-white/20 mt-1">{postForm.desc.length} 字</div>
+                </div>
+                <div>
+                  <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">上传凭证图片 <span className="text-white/20 normal-case font-normal">（选填，最多 5 张）</span></label>
+                  <div className="grid grid-cols-5 gap-3 mb-3">
+                    {postPreviews.map((src, i) => (
+                      <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-white/10">
+                        <img src={src} alt="" className="w-full h-full object-cover" />
+                        <button type="button" onClick={() => removePostImage(i)} className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full text-white text-xs flex items-center justify-center hover:bg-black/80 transition">×</button>
+                      </div>
+                    ))}
+                    {postImages.length < 5 && (
+                      <button type="button" onClick={() => fileInputRef.current?.click()} className="aspect-square rounded-xl border-2 border-dashed border-white/20 hover:border-white/40 flex flex-col items-center justify-center gap-1 transition text-white/30 hover:text-white/60">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                        <span className="text-xs">{postImages.length}/5</span>
+                      </button>
+                    )}
+                  </div>
+                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleImageChange} />
+                  <p className="text-xs text-white/20">支持 JPG、PNG、WebP，每张不超过 5MB</p>
+                </div>
+                <div>
+                  <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">发布者</label>
+                  <input value={postForm.creator} onChange={(e) => setPostForm({ ...postForm, creator: e.target.value })} placeholder="例：user@gmail.com" className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">发布方案</label>
+                  <select value={postForm.plan} onChange={(e) => setPostForm({ ...postForm, plan: e.target.value })} className={`${inputClass} bg-[#0B0F14] cursor-pointer`}>
+                    <option value="basic" style={{backgroundColor:"#0B0F14",color:"white"}}>永久发布（基础）</option>
+                    <option value="premium" style={{backgroundColor:"#0B0F14",color:"white"}}>永久发布 + 置顶推广 7 天</option>
+                  </select>
                 </div>
                 <div className="border-t border-white/10" />
                 <button type="submit" disabled={posting} className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed py-3 rounded-xl text-sm font-medium transition">

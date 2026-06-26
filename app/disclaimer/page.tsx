@@ -6,8 +6,8 @@ export default function DisclaimerPage() {
   const sections = [
     {
       title: "1. 平台性质", titleEn: "Platform Nature",
-      content: "分鉴路（Fenjianlu）是一个中立的商业争议信息记录平台。本平台仅提供信息发布与展示服务，不代表任何一方的立场，亦不对任何争议作出法律裁定或道德评判。",
-      contentEn: "Fenjianlu is a neutral platform for recording commercial dispute information. We provide information publishing and display services only, and do not represent any party or make any legal or moral judgments on disputes.",
+      content: "本平台是一个中立的商业争议信息记录平台。本平台仅提供信息发布与展示服务，不代表任何一方的立场，亦不对任何争议作出法律裁定或道德评判。",
+      contentEn: "This platform is a neutral platform for recording commercial dispute information. We provide information publishing and display services only, and do not represent any party or make any legal or moral judgments on disputes.",
     },
     {
       title: "2. 内容真实性", titleEn: "Content Accuracy",

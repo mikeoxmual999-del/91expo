@@ -47,11 +47,18 @@ body {
 }
 
 .animate-scroll {
-  animation: scrollUp 20s linear infinite;
+  animation: scrollUp 60s linear infinite;
   will-change: transform;
 }
 
 .animate-scroll:hover {
+  animation-play-state: paused;
+}
+.animate-scroll-slow {
+  animation: scrollUp 80s linear infinite;
+  will-change: transform;
+}
+.animate-scroll-slow:hover {
   animation-play-state: paused;
 }
 

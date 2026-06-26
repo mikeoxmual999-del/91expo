@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "分鉴路 | 商业争议记录与协商平台",
-  description: "分鉴路（Fenjianlu）— 商业争议记录与协商平台。以事实为基础，推动问题透明解决。",
+  title: "51记录",
+  description: "51记录（Fenjianlu）— 商业争议记录与协商平台。以事实为基础，推动问题透明解决。",
 };
 
 export default function RootLayout({

@@ -57,8 +57,8 @@ export default function PrivacyPage() {
           <p className="text-[#9CA3AF] text-sm">最后更新 / Last Updated: {new Date().getFullYear()}</p>
         </div>
         <div className="bg-blue-50 border border-blue-200 rounded-2xl px-6 md:px-8 py-6 mb-6">
-          <p className="text-[#2B6CB0] text-sm leading-relaxed mb-2">我们重视您的隐私。本政策说明我们如何收集、使用和保护您在使用分鉴路（Fenjianlu）平台时提供的个人信息。</p>
-          <p className="text-[#2B6CB0]/60 text-sm leading-relaxed italic">We value your privacy. This policy explains how we collect, use, and protect your personal information when using the Fenjianlu platform.</p>
+          <p className="text-[#2B6CB0] text-sm leading-relaxed mb-2">我们重视您的隐私。本政策说明我们如何收集、使用和保护您在使用本平台平台时提供的个人信息。</p>
+          <p className="text-[#2B6CB0]/60 text-sm leading-relaxed italic">We value your privacy. This policy explains how we collect, use, and protect your personal information when using the This platform platform.</p>
         </div>
         <div className="space-y-4">
           {sections.map((s) => (

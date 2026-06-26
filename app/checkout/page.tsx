@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { PLAN_LABELS } from "../config/pricing";
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 type PendingPayment = {
   caseId: string;
@@ -12,13 +16,135 @@ type PendingPayment = {
   price: number;
 };
 
+function WeChatModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-2xl p-6 max-w-[400px] w-full shadow-xl">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-xl">💬</div>
+          <h3 className="text-lg font-bold text-[#0F2A44]">微信支付说明</h3>
+        </div>
+        <div className="space-y-3 text-sm text-[#4B5563] mb-6">
+          <p>使用微信支付前，请注意以下事项：</p>
+          <ul className="space-y-2">
+            <li className="flex items-start gap-2">
+              <span className="text-orange-500 mt-0.5">⚠️</span>
+              <span>手机端暂不支持直接跳转微信App，将显示二维码</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-500 mt-0.5">💡</span>
+              <span>建议使用电脑扫码支付，体验最佳</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-500 mt-0.5">📱</span>
+              <span>手机用户可截图二维码，在微信扫一扫中选择从相册识别</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-green-500 mt-0.5">✅</span>
+              <span>在微信内打开本页面可直接完成支付，无需扫码</span>
+            </li>
+          </ul>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={onCancel}
+            className="flex-1 py-3 rounded-xl border border-[#E5E7EB] text-sm text-[#6B7280] hover:border-[#CBD5E0] transition">
+            返回选择
+          </button>
+          <button onClick={onConfirm}
+            className="flex-1 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-white text-sm font-medium transition">
+            我已了解，继续支付
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PaymentForm({ pending, caseId, isPremium }: { pending: PendingPayment; caseId: string; isPremium: boolean }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [paying, setPaying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [showWeChatModal, setShowWeChatModal] = useState(false);
+  const [weChatConfirmed, setWeChatConfirmed] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+
+    if (selectedMethod === "wechat_pay" && !weChatConfirmed) {
+      setShowWeChatModal(true);
+      return;
+    }
+
+    setPaying(true);
+    setError(null);
+
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/payment/success?caseId=${caseId}&plan=${pending.plan}&duration=${pending.duration}`,
+      },
+    });
+
+    if (error) {
+      setError(error.message || "付款失败，请重试");
+      setPaying(false);
+    }
+  };
+
+  const handleWeChatConfirm = async () => {
+    setShowWeChatModal(false);
+    setWeChatConfirmed(true);
+    if (!stripe || !elements) return;
+    setPaying(true);
+    setError(null);
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/payment/success?caseId=${caseId}&plan=${pending.plan}&duration=${pending.duration}`,
+      },
+    });
+    if (error) {
+      setError(error.message || "付款失败，请重试");
+      setPaying(false);
+    }
+  };
+
+  return (
+    <>
+      {showWeChatModal && (
+        <WeChatModal
+          onConfirm={handleWeChatConfirm}
+          onCancel={() => setShowWeChatModal(false)}
+        />
+      )}
+      <form onSubmit={handleSubmit}>
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 md:p-6 mb-6 shadow-sm">
+          <div className="text-xs text-[#6B7280] uppercase tracking-widest mb-4 font-medium">选择付款方式</div>
+          <PaymentElement onChange={(e) => {
+            if (e.value?.type) setSelectedMethod(e.value.type);
+          }} />
+        </div>
+        {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
+        <button type="submit" disabled={paying || !stripe}
+          className={`w-full py-4 rounded-xl text-base font-semibold transition text-white disabled:opacity-50 disabled:cursor-not-allowed ${isPremium ? "bg-yellow-500 hover:bg-yellow-400" : "bg-[#2B6CB0] hover:bg-[#2563a0]"}`}>
+          {paying ? "处理中..." : `立即付款 $${pending.price} USD`}
+        </button>
+        <p className="text-center text-[#9CA3AF] text-xs mt-4">付款由 Stripe 安全处理 · 支持信用卡 · WeChat Pay</p>
+      </form>
+    </>
+  );
+}
+
 function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const caseId = searchParams.get("caseId");
   const [pending, setPending] = useState<PendingPayment | null>(null);
   const [caseData, setCaseData] = useState<any>(null);
-  const [paying, setPaying] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   useEffect(() => {
     if (!caseId) { router.replace("/create"); return; }
@@ -29,8 +155,6 @@ function CheckoutContent() {
 
     const loadCase = async () => {
       let loadedCase = null;
-
-      // Try DB first
       try {
         const res = await fetch(`/api/cases?id=${caseId}`);
         if (res.ok) {
@@ -39,7 +163,6 @@ function CheckoutContent() {
         }
       } catch {}
 
-      // Fallback to localStorage
       if (!loadedCase) {
         const cases = localStorage.getItem("cases");
         if (cases) loadedCase = JSON.parse(cases)[caseId];
@@ -48,7 +171,6 @@ function CheckoutContent() {
       if (!loadedCase) return;
       setCaseData(loadedCase);
 
-      // Save to DB immediately as unpaid so it shows in profile even if they abandon
       const user = localStorage.getItem("user");
       fetch("/api/cases", {
         method: "POST",
@@ -67,34 +189,31 @@ function CheckoutContent() {
           expires_at: null,
           timeline: loadedCase.timeline || [],
         }),
-      }).catch(() => {}); // silently ignore if already exists
-    };
+      }).catch(() => {});
 
-    loadCase();
-  }, [caseId]);
-
-  const handlePay = async () => {
-    if (!pending || !caseData) return;
-    setPaying(true);
-    try {
       const res = await fetch("/api/stripe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           caseId,
-          plan: pending.plan,
-          duration: pending.duration,
-          price: pending.price,
-          company: caseData.company,
+          plan: p.plan,
+          duration: p.duration,
+          price: p.price,
+          company: loadedCase.company,
         }),
       });
       const data = await res.json();
-      if (data.url) { window.location.href = data.url; }
-      else { alert("付款初始化失败，请重试"); setPaying(false); }
-    } catch { alert("发生错误，请重试"); setPaying(false); }
-  };
+      if (data.clientSecret) setClientSecret(data.clientSecret);
+    };
 
-  if (!pending || !caseData) return null;
+    loadCase();
+  }, [caseId]);
+
+  if (!pending || !caseData || !clientSecret) return (
+    <div className="min-h-screen bg-[#F5F7FA] flex items-center justify-center">
+      <div className="text-[#6B7280] text-sm">加载中...</div>
+    </div>
+  );
 
   const isPremium = pending.plan === "premium";
 
@@ -112,7 +231,6 @@ function CheckoutContent() {
           <p className="text-[#6B7280] text-sm">确认订单信息后完成付款，记录将立即公开。</p>
         </div>
 
-        {/* STEPS */}
         <div className="flex items-center gap-3 mb-8 md:mb-10">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-green-500 text-white text-xs flex items-center justify-center">✓</div>
@@ -130,7 +248,6 @@ function CheckoutContent() {
           </div>
         </div>
 
-        {/* CASE SUMMARY */}
         <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 md:p-6 mb-5 shadow-sm">
           <div className="text-xs text-[#6B7280] uppercase tracking-widest mb-3 font-medium">纠纷信息</div>
           <div className="text-[#1F2937] font-semibold mb-1">{caseData.company}</div>
@@ -138,7 +255,6 @@ function CheckoutContent() {
           <div className="text-[#4B5563] text-sm line-clamp-2">{caseData.description || caseData.desc}</div>
         </div>
 
-        {/* ORDER SUMMARY */}
         <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 md:p-6 mb-6 shadow-sm">
           <div className="text-xs text-[#6B7280] uppercase tracking-widest mb-4 font-medium">订单详情</div>
           <div className="space-y-3 mb-4">
@@ -177,11 +293,9 @@ function CheckoutContent() {
           </div>
         </div>
 
-        <button onClick={handlePay} disabled={paying}
-          className={`w-full py-4 rounded-xl text-base font-semibold transition text-white disabled:opacity-50 disabled:cursor-not-allowed ${isPremium ? "bg-yellow-500 hover:bg-yellow-400" : "bg-[#2B6CB0] hover:bg-[#2563a0]"}`}>
-          {paying ? "处理中..." : `立即付款 $${pending.price} USD`}
-        </button>
-        <p className="text-center text-[#9CA3AF] text-xs mt-4">付款由 Stripe 安全处理 · 支持信用卡 · WeChat Pay · 更多</p>
+        <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "stripe" } }}>
+          <PaymentForm pending={pending} caseId={caseId!} isPremium={isPremium} />
+        </Elements>
 
       </div>
     </main>

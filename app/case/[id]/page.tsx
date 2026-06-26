@@ -15,6 +15,18 @@ type CaseItem = {
   timeline?: string[];
   creator?: string;
   paid?: boolean;
+  images?: string[];
+};
+
+const maskTimelineEntry = (entry: string) => {
+  return entry
+    .replace(/[\w.-]+@[\w.-]+\.[a-z]{2,}/gi, (match) => {
+      const [local, domain] = match.split("@");
+      return `${local[0]}***@${domain}`;
+    })
+    .replace(/\+\d{10,15}/g, (match) => {
+      return `${match.slice(0, 3)}***${match.slice(-7)}`;
+    });
 };
 
 export default function CaseDetailPage() {
@@ -24,6 +36,7 @@ export default function CaseDetailPage() {
 
   const [caseData, setCaseData] = useState<CaseItem | null>(null);
   const [user, setUser] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   useEffect(() => {
     const currentUser = localStorage.getItem("user");
@@ -41,6 +54,7 @@ export default function CaseDetailPage() {
             ...data,
             desc: data.description || data.desc || "",
             timeline: typeof data.timeline === "string" ? JSON.parse(data.timeline) : data.timeline || ["记录已创建"],
+            images: typeof data.images === "string" ? JSON.parse(data.images) : data.images || [],
           });
           return;
         }
@@ -106,7 +120,7 @@ export default function CaseDetailPage() {
         <div className="text-center">
           <div className="text-5xl mb-4">🔍</div>
           <div className="text-[#6B7280]">未找到该记录</div>
-          <Link href="/" className="mt-6 inline-block text-[#2B6CB0] hover:underline text-sm">← 返回首页</Link>
+          <Link href="/feed" className="mt-6 inline-block text-[#2B6CB0] hover:underline text-sm">← 返回首页</Link>
         </div>
       </main>
     );
@@ -116,6 +130,7 @@ export default function CaseDetailPage() {
   const isCreator = !isSystemCase && caseData.creator === user;
   const isOtherUser = user && (isSystemCase || user !== caseData.creator);
   const isPaid = !!caseData.paid || isSystemCase;
+  const images = caseData.images || [];
 
   if (!isPaid && !isCreator) {
     return (
@@ -123,7 +138,7 @@ export default function CaseDetailPage() {
         <div className="text-center">
           <div className="text-5xl mb-4">🔒</div>
           <div className="text-[#6B7280] mb-4">该记录尚未公开</div>
-          <Link href="/" className="text-[#2B6CB0] hover:underline text-sm">← 返回首页</Link>
+          <Link href="/feed" className="text-[#2B6CB0] hover:underline text-sm">← 返回首页</Link>
         </div>
       </main>
     );
@@ -131,9 +146,18 @@ export default function CaseDetailPage() {
 
   return (
     <main className="min-h-screen bg-[#F5F7FA] text-[#1F2937]">
+
+      {/* LIGHTBOX */}
+      {lightbox && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center px-4" onClick={() => setLightbox(null)}>
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white text-3xl">×</button>
+          <img src={lightbox} alt="" className="max-w-full max-h-[90vh] rounded-xl object-contain" onClick={e => e.stopPropagation()} />
+        </div>
+      )}
+
       <div className="max-w-[1000px] mx-auto px-4 md:px-8 py-8 md:py-16">
 
-        <Link href="/" className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#1F2937] text-sm mb-6 md:mb-10 transition">
+        <Link href="/feed" className="inline-flex items-center gap-2 text-[#6B7280] hover:text-[#1F2937] text-sm mb-6 md:mb-10 transition">
           ← 返回记录列表
         </Link>
 
@@ -173,6 +197,21 @@ export default function CaseDetailPage() {
           <p className="text-[#1F2937] leading-relaxed text-sm md:text-base">{caseData.desc}</p>
         </div>
 
+        {/* IMAGES */}
+        {images.length > 0 && (
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 md:p-8 mb-4 md:mb-6 shadow-sm">
+            <h2 className="text-xs font-semibold text-[#6B7280] mb-4 uppercase tracking-widest">凭证图片</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {images.map((src, i) => (
+                <div key={i} onClick={() => setLightbox(src)}
+                  className="aspect-square rounded-xl overflow-hidden border border-[#E5E7EB] cursor-pointer hover:opacity-90 transition bg-[#F5F7FA]">
+                  <img src={src} alt={`凭证 ${i + 1}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* TIMELINE */}
         <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 md:p-8 mb-4 md:mb-6 shadow-sm">
           <h2 className="text-xs font-semibold text-[#6B7280] mb-4 md:mb-6 uppercase tracking-widest">时间线</h2>
@@ -183,7 +222,7 @@ export default function CaseDetailPage() {
               {(caseData.timeline || []).map((item, index) => (
                 <div key={index} className="flex gap-3 md:gap-4 items-start">
                   <div className="mt-1.5 w-2 h-2 rounded-full bg-[#2B6CB0] shrink-0" />
-                  <div className="text-[#4B5563] text-xs md:text-sm leading-relaxed border-l border-[#E5E7EB] pl-3 md:pl-4">{item}</div>
+                  <div className="text-[#4B5563] text-xs md:text-sm leading-relaxed border-l border-[#E5E7EB] pl-3 md:pl-4">{maskTimelineEntry(item)}</div>
                 </div>
               ))}
             </div>

@@ -6,8 +6,8 @@ export default function TermsPage() {
   const sections = [
     {
       title: "1. 服务说明", titleEn: "Service Description",
-      content: "分鉴路（Fenjianlu）为用户提供商业争议信息的发布、查询与记录服务。本平台不提供法律咨询、调解或仲裁服务，亦不对争议结果承担任何责任。",
-      contentEn: "Fenjianlu provides users with services for publishing, querying, and recording commercial dispute information. We do not offer legal consultation, mediation, or arbitration, and assume no responsibility for dispute outcomes.",
+      content: "本平台为用户提供商业争议信息的发布、查询与记录服务。本平台不提供法律咨询、调解或仲裁服务，亦不对争议结果承担任何责任。",
+      contentEn: "This platform provides users with services for publishing, querying, and recording commercial dispute information. We do not offer legal consultation, mediation, or arbitration, and assume no responsibility for dispute outcomes.",
     },
     {
       title: "2. 用户注册", titleEn: "User Registration",

@@ -11,31 +11,18 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { caseId, plan, duration, price, company } = body;
 
-    const durationLabel = plan === "premium" ? "永久发布 + 置顶推广 7 天" : "永久发布";
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card", "wechat_pay", "amazon_pay", "cashapp", "link"],
-      payment_method_options: { wechat_pay: { client: "web" } },
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: `${PLAN_LABELS[plan as keyof typeof PLAN_LABELS]} · ${company}`,
-              description: durationLabel,
-            },
-            unit_amount: price * 100,
-          },
-          quantity: 1,
-        },
-      ],
-      mode: "payment",
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success?caseId=${caseId}&plan=${plan}&duration=${duration}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout?caseId=${caseId}`,
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: price * 100,
+      currency: "usd",
+      payment_method_types: ["card", "wechat_pay"],
+      payment_method_options: {
+        wechat_pay: { client: "web" },
+      },
       metadata: { caseId, plan, duration },
+      description: `${PLAN_LABELS[plan as keyof typeof PLAN_LABELS]} · ${company}`,
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ clientSecret: paymentIntent.client_secret });
   } catch (error: any) {
     console.error("Stripe error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

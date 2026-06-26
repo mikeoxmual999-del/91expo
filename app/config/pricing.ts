@@ -1,15 +1,12 @@
 export type PlanType = "basic" | "premium";
-
 export const PRICING = {
-  basic: 150,
-  premium: 200, // 150 + 50 for 7-day featured
+  basic: 39.99,
+  premium: 59.99,
 };
-
 export const PLAN_LABELS = {
   basic: "永久发布",
   premium: "永久发布 + 置顶推广",
 };
-
 export const PLAN_FEATURES = {
   basic: [
     "永久显示在争议记录列表",
@@ -28,4 +25,9 @@ export const PLAN_FEATURES = {
     "申请协调功能",
     "可申请下架（需提供证据）",
   ],
+};
+export const DURATION_LABELS = {
+  "7": "7 天",
+  "30": "30 天",
+  "permanent": "永久",
 };

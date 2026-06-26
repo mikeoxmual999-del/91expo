@@ -20,7 +20,7 @@ export default function DMPage() {
   const [timelineUpdated, setTimelineUpdated] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const loadMessages = async () => {
+  const loadMessages = async (scroll = false) => {
     try {
       const res = await fetch(`/api/messages?caseId=${caseId}&responderId=${encodeURIComponent(responderId)}`);
       if (res.ok) {
@@ -50,10 +50,13 @@ export default function DMPage() {
     };
 
     loadCase();
-    loadMessages();
+    loadMessages(true);
+
+    const interval = setInterval(() => loadMessages(true), 3000);
+    return () => clearInterval(interval);
   }, [caseId, responderId]);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => { if (bottomRef.current) { const container = bottomRef.current.parentElement; if (container) container.scrollTop = container.scrollHeight; }; }, [messages]);
 
   const handleSend = async () => {
     if (!input.trim() || !currentUser) return;

@@ -12,7 +12,7 @@ export default function Footer() {
           {/* LEFT — BRAND */}
           <div>
             <Link href="/" className="text-white font-bold text-xl">
-              分鉴路<span className="text-blue-300 text-sm font-normal ml-1">Fenjianlu</span>
+              51记录
             </Link>
             <p className="text-white/60 text-sm mt-3 leading-relaxed max-w-[240px]">
               商业争议记录与协商平台。以事实为基础，推动问题透明解决。
@@ -54,7 +54,7 @@ export default function Footer() {
         {/* BOTTOM BAR */}
         <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
           <p className="text-white/20 text-xs">
-            © {new Date().getFullYear()} 分鉴路 Fenjianlu · 商业争议记录与协商平台
+            © {new Date().getFullYear()} 51记录 · 商业争议记录与协商平台
           </p>
           <p className="text-white/20 text-xs">
             本平台仅提供信息记录服务，不对内容真实性作出认定

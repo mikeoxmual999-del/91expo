@@ -5,9 +5,43 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PRICING, PLAN_LABELS, PLAN_FEATURES, type PlanType } from "../config/pricing";
 
-const DISCLAIMER_ZH = `本平台仅提供商业纠纷信息记录与展示服务。发布者需确保所提供信息真实、合法，并承担相应法律责任。平台不对发布内容的真实性作出保证，亦不参与任何法律纠纷。被发布方可通过提供合法证据申请下架。本平台保留对违规内容进行处理的权利。`;
+const DISCLAIMER_ZH = `【重要声明 — 请在付款前仔细阅读】
 
-const DISCLAIMER_EN = `This platform provides commercial dispute information recording and display services only. Publishers must ensure that all information provided is truthful and lawful, and bear full legal responsibility for the content. The platform does not guarantee the accuracy of published content and does not participate in any legal disputes. The published party may apply for removal by providing lawful evidence. The platform reserves the right to handle any content that violates our policies.`;
+1. 服务性质：分鉴路（Fenjianlu）仅提供商业纠纷信息的记录与展示服务，不提供法律建议、调解或仲裁服务，亦不对任何争议的处理结果承担责任。
+
+2. 发布者责任：发布者须确保所提交的全部信息真实、合法、无误，并对所发布内容承担完全的法律责任。如因发布虚假、诽谤或侵权内容而产生的任何法律纠纷或损失，由发布者自行承担，与本平台无关。
+
+3. 付款不退款：所有付款均为一次性服务费，一经完成不予退款。付款即视为您同意本声明的全部条款。
+
+4. 内容下架条款：平台以"长期展示"为目标，但在以下情况下，平台有权将内容下架，且不退还任何费用：
+   • 被发布方提供经核实的合法证据证明内容不实；
+   • 内容违反适用法律法规；
+   • 内容违反本平台用户协议；
+   • 依据法院命令、政府要求或监管指令；
+   • 平台因运营、技术或不可抗力原因终止服务。
+
+5. 平台免责：本平台不对因展示内容引发的任何直接、间接、附带或后果性损失承担责任，包括但不限于名誉损失、经济损失或法律费用。
+
+6. 内容真实性：平台不对用户发布内容的真实性作出独立核实或保证，所有内容均代表发布者个人立场。`;
+
+const DISCLAIMER_EN = `【IMPORTANT NOTICE — Please read carefully before payment】
+
+1. Nature of Service: Fenjianlu provides commercial dispute information recording and display services only. We do not provide legal advice, mediation, or arbitration, and bear no responsibility for the outcome of any dispute.
+
+2. Publisher Responsibility: Publishers must ensure all submitted information is truthful, lawful, and accurate. Publishers bear full legal responsibility for their content. Any legal disputes or losses arising from false, defamatory, or infringing content are the sole responsibility of the publisher.
+
+3. No Refund Policy: All payments are one-time service fees and are non-refundable once completed. Completing payment constitutes your agreement to all terms in this disclaimer.
+
+4. Content Removal: While the platform aims for long-term display, we reserve the right to remove content without refund under the following circumstances:
+   • The published party provides verified lawful evidence proving the content is false;
+   • The content violates applicable laws or regulations;
+   • The content violates our Terms of Service;
+   • Required by court order, government request, or regulatory directive;
+   • The platform ceases operations due to business, technical, or force majeure reasons.
+
+5. Platform Liability: This platform bears no liability for any direct, indirect, incidental, or consequential losses arising from displayed content.
+
+6. Content Accuracy: The platform does not independently verify or guarantee the accuracy of user-submitted content.`;
 
 function PricingContent() {
   const router = useRouter();
@@ -124,9 +158,9 @@ function PricingContent() {
             <input type="checkbox" checked={agreed} onChange={(e) => { setAgreed(e.target.checked); setShowDisclaimer(false); }}
               className="mt-0.5 w-4 h-4 rounded border-[#D1D5DB] text-[#2B6CB0] cursor-pointer shrink-0" />
             <span className="text-sm text-[#4B5563]">
-              我已阅读并同意以上免责声明，确认所提交信息真实有效，并承担相应法律责任。
+              我已完整阅读并理解上述免责声明，确认所提交信息真实合法，同意付款后不予退款，并愿意承担因发布内容引起的全部法律责任。
               <br />
-              <span className="text-xs text-[#9CA3AF]">I have read and agree to the disclaimer above.</span>
+              <span className="text-xs text-[#9CA3AF]">I have fully read and understood the disclaimer above. I confirm my submitted information is truthful and lawful, agree that all payments are non-refundable, and accept full legal responsibility for my published content.</span>
             </span>
           </label>
           {showDisclaimer && !agreed && (
