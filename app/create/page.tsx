@@ -4,11 +4,23 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+type ComplianceIssue = {
+  reasons: string[];
+  suggestion: string;
+};
+
+type SavedCase = {
+  company?: string;
+  description?: string;
+  date?: string;
+};
+
 export default function CreatePage() {
   const router = useRouter();
 
   const [form, setForm] = useState({ company: "", amount: "", type: "", desc: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [complianceIssue, setComplianceIssue] = useState<ComplianceIssue | null>(null);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -29,15 +41,41 @@ export default function CreatePage() {
     if (!user) { alert("请先登录后再发布纠纷记录"); router.push("/login"); return; }
     if (!form.company.trim() || !form.amount.trim() || !form.desc.trim()) { alert("请填写企业名称、涉及金额及纠纷描述"); return; }
     setSubmitting(true);
+    setComplianceIssue(null);
     const newId = Date.now().toString();
     const timeline = [`记录已创建，等待付款确认 · ${new Date().toLocaleString("zh-CN")}`];
     const caseData = { id: newId, company: form.company.trim(), amount: form.amount.trim(), status: "待付款", type: form.type || "未分类", description: form.desc.trim(), creator: user, paid: false, timeline };
+    let savedCase: SavedCase | null = null;
     try {
-      await fetch("/api/cases", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(caseData) });
-    } catch (err) { console.error("DB save failed", err); }
+      const res = await fetch("/api/cases", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(caseData) });
+      const data = await res.json().catch(() => null);
+
+      if (res.status === 422 && data?.error === "compliance") {
+        setComplianceIssue({
+          reasons: Array.isArray(data.reasons) ? data.reasons : [],
+          suggestion: typeof data.suggestion === "string" ? data.suggestion : "",
+        });
+        setSubmitting(false);
+        return;
+      }
+
+      if (!res.ok) throw new Error(data?.error || `Case submit failed with status ${res.status}`);
+      savedCase = data;
+    } catch (err) {
+      console.error("DB save failed", err);
+      setSubmitting(false);
+      return;
+    }
     const stored = localStorage.getItem("cases");
-    let cases = stored ? JSON.parse(stored) : {};
-    cases[newId] = { ...caseData, desc: form.desc.trim(), date: new Date().toISOString() };
+    const cases = stored ? JSON.parse(stored) : {};
+    const storedDescription = typeof savedCase?.description === "string" ? savedCase.description : form.desc.trim();
+    cases[newId] = {
+      ...caseData,
+      company: typeof savedCase?.company === "string" ? savedCase.company : caseData.company,
+      description: storedDescription,
+      desc: storedDescription,
+      date: savedCase?.date || new Date().toISOString(),
+    };
     localStorage.setItem("cases", JSON.stringify(cases));
     router.push(`/pricing?caseId=${newId}`);
   }
@@ -121,8 +159,37 @@ export default function CreatePage() {
                 纠纷描述 <span className="text-red-500">*</span>
               </label>
               <textarea name="desc" value={form.desc} placeholder="请简要描述纠纷经过、事件背景及目前状况..." onChange={handleChange} rows={5} className={`${inputClass} resize-none`} />
+              <div className="mt-2 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-2 text-xs leading-relaxed text-[#6B7280]">
+                本平台会自动屏蔽不合规词汇并审核内容，且不对事实作出认定。/ This platform automatically masks non-compliant terms, reviews content, and does not determine facts.
+              </div>
               <div className="text-right text-xs text-[#9CA3AF] mt-1">{form.desc.length} 字</div>
             </div>
+
+            {complianceIssue && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-[#1F2937]">
+                <h2 className="font-semibold text-amber-900 mb-2">内容需要调整 / Content needs adjustment</h2>
+                {complianceIssue.reasons.length > 0 && (
+                  <ul className="space-y-1 text-amber-900/85 list-disc list-inside mb-3">
+                    {complianceIssue.reasons.map((reason, index) => (
+                      <li key={`${reason}-${index}`}>{reason}</li>
+                    ))}
+                  </ul>
+                )}
+                {complianceIssue.suggestion && (
+                  <div className="rounded-lg border border-amber-200 bg-white p-3">
+                    <div className="text-xs font-medium text-[#6B7280] mb-2">建议版本 / Suggested version</div>
+                    <p className="text-[#1F2937] leading-relaxed whitespace-pre-wrap">{complianceIssue.suggestion}</p>
+                    <button
+                      type="button"
+                      onClick={() => setForm((current) => ({ ...current, desc: complianceIssue.suggestion }))}
+                      className="mt-3 inline-flex items-center justify-center rounded-lg bg-[#2B6CB0] px-4 py-2 text-xs font-medium text-white transition hover:bg-[#2563a0]"
+                    >
+                      使用建议版本 / Use suggested version
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="border-t border-[#E5E7EB]" />
 
