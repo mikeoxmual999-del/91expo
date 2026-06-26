@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
+import { checkCompliance, maskHardWords } from "@/app/lib/censor";
 
 // GET all paid cases or single case by id
 export async function GET(req: NextRequest) {
@@ -49,17 +50,35 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { id, company, amount, status, type, description, creator, paid, plan, duration, expires_at, timeline } = body;
+    const companyMask = maskHardWords(company || "");
+    const descriptionMask = maskHardWords(description || "");
+
+    try {
+      const compliance = await checkCompliance(descriptionMask.cleaned);
+      if (!compliance.compliant) {
+        return NextResponse.json(
+          {
+            error: "compliance",
+            reasons: compliance.reasons,
+            suggestion: compliance.suggestion,
+          },
+          { status: 422 }
+        );
+      }
+    } catch (error) {
+      console.error("AI compliance check failed; allowing Layer 1 result only:", error);
+    }
 
     await pool.execute(
       `INSERT INTO cases (id, company, amount, status, type, description, creator, paid, plan, duration, expires_at, timeline)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        company,
+        companyMask.cleaned,
         amount,
         status || "未回应",
         type || "未分类",
-        description || "",
+        descriptionMask.cleaned,
         creator || null,
         paid || false,
         plan || null,
