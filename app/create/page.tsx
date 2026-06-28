@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 type ComplianceIssue = {
   reasons: string[];
   suggestion: string;
+  flaggedSpans: string[];
 };
 
 type SavedCase = {
@@ -24,6 +25,7 @@ export default function CreatePage() {
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
+    if (e.target.name === "desc") setComplianceIssue(null);
   }
 
   function handleAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -35,25 +37,26 @@ export default function CreatePage() {
     setForm({ ...form, amount: formatted });
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submitCase(forceContinue = false) {
     const user = localStorage.getItem("user");
     if (!user) { alert("请先登录后再发布纠纷记录"); router.push("/login"); return; }
     if (!form.company.trim() || !form.amount.trim() || !form.desc.trim()) { alert("请填写企业名称、涉及金额及纠纷描述"); return; }
     setSubmitting(true);
-    setComplianceIssue(null);
+    if (!forceContinue) setComplianceIssue(null);
     const newId = Date.now().toString();
     const timeline = [`记录已创建，等待付款确认 · ${new Date().toLocaleString("zh-CN")}`];
     const caseData = { id: newId, company: form.company.trim(), amount: form.amount.trim(), status: "待付款", type: form.type || "未分类", description: form.desc.trim(), creator: user, paid: false, timeline };
+    const requestData = { ...caseData, ...(forceContinue ? { forceContinue: true } : {}) };
     let savedCase: SavedCase | null = null;
     try {
-      const res = await fetch("/api/cases", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(caseData) });
+      const res = await fetch("/api/cases", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestData) });
       const data = await res.json().catch(() => null);
 
       if (res.status === 422 && data?.error === "compliance") {
         setComplianceIssue({
           reasons: Array.isArray(data.reasons) ? data.reasons : [],
           suggestion: typeof data.suggestion === "string" ? data.suggestion : "",
+          flaggedSpans: Array.isArray(data.flaggedSpans) ? data.flaggedSpans.filter((span: unknown): span is string => typeof span === "string" && span.length > 0) : [],
         });
         setSubmitting(false);
         return;
@@ -78,6 +81,35 @@ export default function CreatePage() {
     };
     localStorage.setItem("cases", JSON.stringify(cases));
     router.push(`/pricing?caseId=${newId}`);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    await submitCase(false);
+  }
+
+  async function handleForceContinue() {
+    const confirmed = window.confirm(
+      "如果继续发布，系统会把下方标红的词句替换为 ***，其余内容保持不变。\n\nIf you continue, the highlighted words or phrases will be replaced with *** in the published post."
+    );
+    if (!confirmed) return;
+    await submitCase(true);
+  }
+
+  function renderHighlightedDescription(text: string, flaggedSpans: string[]) {
+    const spans = Array.from(new Set(flaggedSpans.filter(Boolean))).sort((a, b) => b.length - a.length);
+    if (spans.length === 0) return text;
+
+    const escaped = spans.map((span) => span.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const regex = new RegExp(`(${escaped.join("|")})`, "g");
+    return text.split(regex).map((part, index) => {
+      if (!spans.includes(part)) return <span key={`${part}-${index}`}>{part}</span>;
+      return (
+        <mark key={`${part}-${index}`} className="rounded bg-red-100 px-1 py-0.5 text-red-800 ring-1 ring-red-200">
+          {part}
+        </mark>
+      );
+    });
   }
 
   const inputClass = "w-full bg-[#F5F7FA] border border-[#E5E7EB] px-4 py-3 rounded-xl text-[#1F2937] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#2B6CB0] transition text-sm";
@@ -159,6 +191,15 @@ export default function CreatePage() {
                 纠纷描述 <span className="text-red-500">*</span>
               </label>
               <textarea name="desc" value={form.desc} placeholder="请简要描述纠纷经过、事件背景及目前状况..." onChange={handleChange} rows={5} className={`${inputClass} resize-none`} />
+              {complianceIssue?.flaggedSpans.length ? (
+                <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-4">
+                  <div className="mb-2 text-sm font-semibold text-red-900">以下词句被系统标记</div>
+                  <div className="mb-3 text-xs text-red-700">Highlighted words or phrases were flagged by the compliance review.</div>
+                  <div className="whitespace-pre-wrap rounded-lg bg-white p-3 text-sm leading-relaxed text-[#1F2937] ring-1 ring-red-100">
+                    {renderHighlightedDescription(form.desc, complianceIssue.flaggedSpans)}
+                  </div>
+                </div>
+              ) : null}
               <div className="mt-2 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-2 text-xs leading-relaxed text-[#6B7280]">
                 本平台会自动屏蔽不合规词汇并审核内容，且不对事实作出认定。/ This platform automatically masks non-compliant terms, reviews content, and does not determine facts.
               </div>
@@ -166,28 +207,52 @@ export default function CreatePage() {
             </div>
 
             {complianceIssue && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-[#1F2937]">
-                <h2 className="font-semibold text-amber-900 mb-2">内容需要调整 / Content needs adjustment</h2>
+              <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-5 text-sm text-[#1F2937] shadow-sm">
+                <h2 className="text-base font-semibold text-amber-950">内容需要调整后再发布</h2>
+                <p className="mt-1 text-xs text-amber-800/80">Content needs adjustment before publishing.</p>
                 {complianceIssue.reasons.length > 0 && (
-                  <ul className="space-y-1 text-amber-900/85 list-disc list-inside mb-3">
-                    {complianceIssue.reasons.map((reason, index) => (
-                      <li key={`${reason}-${index}`}>{reason}</li>
-                    ))}
-                  </ul>
+                  <div className="mt-4">
+                    <div className="font-medium text-amber-950">系统提示原因</div>
+                    <div className="mb-2 text-xs text-amber-800/75">Review reasons</div>
+                    <ul className="space-y-1 text-amber-900/90 list-disc list-inside">
+                      {complianceIssue.reasons.map((reason, index) => (
+                        <li key={`${reason}-${index}`}>{reason}</li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
                 {complianceIssue.suggestion && (
-                  <div className="rounded-lg border border-amber-200 bg-white p-3">
-                    <div className="text-xs font-medium text-[#6B7280] mb-2">建议版本 / Suggested version</div>
+                  <div className="mt-4 rounded-lg border border-amber-200 bg-white p-3">
+                    <div className="text-sm font-semibold text-[#1F2937]">建议改写版本</div>
+                    <div className="mb-2 text-xs text-[#6B7280]">Suggested version</div>
                     <p className="text-[#1F2937] leading-relaxed whitespace-pre-wrap">{complianceIssue.suggestion}</p>
+                  </div>
+                )}
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {complianceIssue.suggestion && (
                     <button
                       type="button"
                       onClick={() => setForm((current) => ({ ...current, desc: complianceIssue.suggestion }))}
-                      className="mt-3 inline-flex items-center justify-center rounded-lg bg-[#2B6CB0] px-4 py-2 text-xs font-medium text-white transition hover:bg-[#2563a0]"
+                      className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#2B6CB0] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#2563a0]"
                     >
-                      使用建议版本 / Use suggested version
+                      <span>
+                        使用建议版本
+                        <span className="block text-xs font-normal text-white/80">Use suggested version</span>
+                      </span>
                     </button>
-                  </div>
-                )}
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleForceContinue}
+                    disabled={submitting}
+                    className="inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-400 bg-white px-4 py-2 text-sm font-medium text-amber-950 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <span>
+                      仍要发布
+                      <span className="block text-xs font-normal text-amber-800/75">Post anyway</span>
+                    </span>
+                  </button>
+                </div>
               </div>
             )}
 

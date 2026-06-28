@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { checkCompliance, maskHardWords } from "@/app/lib/censor";
 
+function maskFlaggedSpans(text: string, flaggedSpans: string[]) {
+  return flaggedSpans
+    .filter((span) => span.length > 0)
+    .reduce((current, span) => current.split(span).join("***"), text);
+}
+
 // GET all paid cases or single case by id
 export async function GET(req: NextRequest) {
   try {
@@ -49,21 +55,27 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, company, amount, status, type, description, creator, paid, plan, duration, expires_at, timeline } = body;
+    const { id, company, amount, status, type, description, creator, paid, plan, duration, expires_at, timeline, forceContinue } = body;
     const companyMask = maskHardWords(company || "");
     const descriptionMask = maskHardWords(description || "");
+    let finalDescription = descriptionMask.cleaned;
 
     try {
-      const compliance = await checkCompliance(descriptionMask.cleaned);
+      const compliance = await checkCompliance(description || "");
       if (!compliance.compliant) {
-        return NextResponse.json(
-          {
-            error: "compliance",
-            reasons: compliance.reasons,
-            suggestion: compliance.suggestion,
-          },
-          { status: 422 }
-        );
+        if (!forceContinue) {
+          return NextResponse.json(
+            {
+              error: "compliance",
+              reasons: compliance.reasons,
+              suggestion: compliance.suggestion,
+              flaggedSpans: compliance.flaggedSpans,
+            },
+            { status: 422 }
+          );
+        }
+
+        finalDescription = maskFlaggedSpans(descriptionMask.cleaned, compliance.flaggedSpans);
       }
     } catch (error) {
       console.error("AI compliance check failed; allowing Layer 1 result only:", error);
@@ -78,7 +90,7 @@ export async function POST(req: NextRequest) {
         amount,
         status || "未回应",
         type || "未分类",
-        descriptionMask.cleaned,
+        finalDescription,
         creator || null,
         paid || false,
         plan || null,

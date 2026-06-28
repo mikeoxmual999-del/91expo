@@ -24,6 +24,7 @@ type ComplianceResult = {
   compliant: boolean;
   reasons: string[];
   suggestion: string;
+  flaggedSpans: string[];
 };
 
 type Span = {
@@ -120,6 +121,9 @@ function normalizeComplianceResult(value: unknown): ComplianceResult {
       ? result.reasons.filter((reason): reason is string => typeof reason === "string")
       : [],
     suggestion: typeof result.suggestion === "string" ? result.suggestion : "",
+    flaggedSpans: Array.isArray(result.flaggedSpans)
+      ? result.flaggedSpans.filter((span): span is string => typeof span === "string" && span.length > 0)
+      : [],
   };
 }
 
@@ -144,7 +148,7 @@ export async function checkCompliance(text: string): Promise<ComplianceResult> {
         {
           role: "system",
           content:
-            'You are a compliance judge for a neutral consumer/business dispute records platform. Judge ONLY whether the submitted post: (a) accuses a company of wrongdoing, (b) claims facts are proven, or (c) rants or uses aggressive non-neutral framing. Be LENIENT: only flag CLEAR violations, give the benefit of the doubt when borderline, and default to compliant when uncertain. Return strict JSON only in this exact shape: {"compliant": boolean, "reasons": string[], "suggestion": string}. If non-compliant, suggestion should rewrite the content in neutral, factual, unproven-claim language.',
+            'You are a compliance judge for a neutral consumer/business dispute records platform. Judge ONLY whether the submitted post: (a) accuses a company of wrongdoing, (b) claims facts are proven, or (c) rants or uses aggressive non-neutral framing. Be LENIENT: only flag CLEAR violations, give the benefit of the doubt when borderline, and default to compliant when uncertain. Return strict JSON only in this exact shape: {"compliant": boolean, "reasons": string[], "suggestion": string, "flaggedSpans": string[]}. If non-compliant, reasons must be Mandarin-first, with any English explanation secondary and shorter. suggestion should rewrite the content in neutral, factual, unproven-claim language, using Mandarin when the input is Mandarin. flaggedSpans must contain only the exact problematic substrings copied verbatim from the user input, with no paraphrases and no surrounding safe text. If compliant, flaggedSpans must be [].',
         },
         {
           role: "user",
