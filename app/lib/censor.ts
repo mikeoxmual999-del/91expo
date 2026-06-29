@@ -33,7 +33,7 @@ type Span = {
   value: string;
 };
 
-const LATIN_BOUNDARY = "[A-Za-z0-9]";
+const LATIN_TOKEN_BOUNDARY = "[A-Za-z0-9_./-]";
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -75,7 +75,7 @@ export function maskHardWords(text: string): MaskResult {
 
   for (const term of latinTerms) {
     const regex = new RegExp(
-      `(?<!${LATIN_BOUNDARY})${escapeRegExp(term)}(?!${LATIN_BOUNDARY})`,
+      `(?<!${LATIN_TOKEN_BOUNDARY})${escapeRegExp(term)}(?!${LATIN_TOKEN_BOUNDARY})`,
       "gi"
     );
 
