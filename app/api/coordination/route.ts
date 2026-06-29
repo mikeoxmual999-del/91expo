@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
+import { isAdminRequest } from "@/app/lib/adminAuth";
 
 // GET all coordination requests
 export async function GET(req: NextRequest) {
   try {
+    if (!isAdminRequest(req)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const [rows] = await pool.execute(
       "SELECT * FROM coordination_requests ORDER BY date DESC"
     );
@@ -35,6 +40,10 @@ export async function POST(req: NextRequest) {
 // DELETE coordination request
 export async function DELETE(req: NextRequest) {
   try {
+    if (!isAdminRequest(req)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await req.json();
     await pool.execute("DELETE FROM coordination_requests WHERE id = ?", [id]);
     return NextResponse.json({ success: true });

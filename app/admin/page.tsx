@@ -22,10 +22,10 @@ type Message = { sender: string; text: string; timestamp: string; };
 type DMThread = { caseId: string; posterId: string; responderId: string; messages: Message[]; };
 type CoordinationRequest = { id?: number; caseId: string; amount: string; desc: string; contact: string; date: string; };
 
-const ADMIN_PASSWORD = "Baobei1109";
-
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [loggingIn, setLoggingIn] = useState(false);
   const [input, setInput] = useState("");
   const [error, setError] = useState(false);
   const [tab, setTab] = useState<"pending" | "all" | "dms" | "coordination" | "post">("pending");
@@ -42,7 +42,24 @@ export default function AdminPage() {
   const [postPreviews, setPostPreviews] = useState<string[]>([]);
   const [posting, setPosting] = useState(false);
   const [postSuccess, setPostSuccess] = useState(false);
+  const [skipAiCompliance, setSkipAiCompliance] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const res = await fetch("/api/admin/me", { credentials: "same-origin" });
+        const data = await res.json();
+        setAuthed(Boolean(data.authenticated));
+      } catch {
+        setAuthed(false);
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+
+    checkSession();
+  }, []);
 
   const loadCases = async () => {
     try {
@@ -112,7 +129,42 @@ export default function AdminPage() {
 
   useEffect(() => { if (authed) { loadCases(); loadCoordination(); } }, [authed]);
 
-  const handleLogin = () => { if (input === ADMIN_PASSWORD) { setAuthed(true); setError(false); } else setError(true); };
+  const handleLogin = async () => {
+    setLoggingIn(true);
+    setError(false);
+
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ password: input }),
+      });
+
+      if (!res.ok) {
+        setError(true);
+        return;
+      }
+
+      setInput("");
+      setAuthed(true);
+    } catch {
+      setError(true);
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/admin/logout", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+    } catch {}
+
+    setAuthed(false);
+  };
 
   const handleApprove = async (id: string) => {
     if (!confirm("确认批准结案？")) return;
@@ -173,8 +225,8 @@ export default function AdminPage() {
     setPosting(true);
     const newId = Date.now().toString();
     const now = new Date().toLocaleString("zh-CN");
-    const caseData = { id: newId, company: postForm.company.trim(), amount: postForm.amount.trim(), status: "未回应", type: postForm.type || "未分类", description: postForm.desc.trim(), creator: postForm.creator.trim() || "admin", paid: true, plan: postForm.plan, duration: "permanent", timeline: [`记录已创建 · ${now}`] };
-    try { await fetch("/api/cases", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(caseData) }); } catch {}
+    const caseData = { id: newId, company: postForm.company.trim(), amount: postForm.amount.trim(), status: "未回应", type: postForm.type || "未分类", description: postForm.desc.trim(), creator: postForm.creator.trim() || "admin", paid: true, plan: postForm.plan, duration: "permanent", timeline: [`记录已创建 · ${now}`], ...(skipAiCompliance ? { adminOverride: true } : {}) };
+    try { await fetch("/api/cases", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify(caseData) }); } catch {}
 
     if (postImages.length > 0) {
       try {
@@ -189,6 +241,7 @@ export default function AdminPage() {
 
     setPostForm({ company: "", amount: "", type: "", desc: "", creator: "admin", plan: "basic" });
     setPostImages([]); setPostPreviews([]);
+    setSkipAiCompliance(false);
     setPosting(false); setPostSuccess(true);
     setTimeout(() => setPostSuccess(false), 3000);
     loadCases();
@@ -222,6 +275,14 @@ export default function AdminPage() {
 
   const inputClass = "w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500 transition text-sm";
 
+  if (checkingAuth) {
+    return (
+      <main className="min-h-screen bg-[#0B0F14] text-white flex items-center justify-center">
+        <div className="text-white/40 text-sm">Loading...</div>
+      </main>
+    );
+  }
+
   if (!authed) {
     return (
       <main className="min-h-screen bg-[#0B0F14] text-white flex items-center justify-center">
@@ -236,7 +297,7 @@ export default function AdminPage() {
               <input type="password" value={input} onChange={(e) => { setInput(e.target.value); setError(false); }} onKeyDown={(e) => e.key === "Enter" && handleLogin()} placeholder="请输入密码" className={inputClass} />
               {error && <p className="text-red-400 text-xs mt-2">密码错误，请重试</p>}
             </div>
-            <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl text-sm font-medium transition">进入后台</button>
+            <button onClick={handleLogin} disabled={loggingIn} className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed py-3 rounded-xl text-sm font-medium transition">{loggingIn ? "Logging in..." : "进入后台"}</button>
           </div>
         </div>
       </main>
@@ -260,7 +321,7 @@ export default function AdminPage() {
             <div className="text-xs text-white/30 uppercase tracking-widest mb-1">管理员后台</div>
             <h1 className="text-2xl font-semibold">管理控制台</h1>
           </div>
-          <button onClick={() => setAuthed(false)} className="text-sm text-white/30 hover:text-white/60 transition">退出后台</button>
+          <button onClick={handleLogout} className="text-sm text-white/30 hover:text-white/60 transition">退出后台</button>
         </div>
 
         {/* STATS */}
@@ -515,6 +576,18 @@ export default function AdminPage() {
                     <option value="premium" style={{backgroundColor:"#0B0F14",color:"white"}}>永久发布 + 置顶推广 7 天</option>
                   </select>
                 </div>
+                <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={skipAiCompliance}
+                    onChange={(e) => setSkipAiCompliance(e.target.checked)}
+                    className="mt-1 h-4 w-4 accent-green-600"
+                  />
+                  <span>
+                    <span className="block text-sm text-white">跳过AI合规检查 / Skip AI compliance check</span>
+                    <span className="block text-xs text-white/40 mt-1">硬词遮罩仍会始终生效（如诈骗等会被替换为※）。 / Hard-word masking still always applies.</span>
+                  </span>
+                </label>
                 <div className="border-t border-white/10" />
                 <button type="submit" disabled={posting} className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed py-3 rounded-xl text-sm font-medium transition">
                   {posting ? "发布中..." : "✍️ 立即免费发布"}

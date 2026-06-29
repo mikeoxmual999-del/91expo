@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { checkCompliance, maskHardWords } from "@/app/lib/censor";
+import { isAdminRequest } from "@/app/lib/adminAuth";
 
 function maskFlaggedSpans(text: string, flaggedSpans: string[]) {
   return flaggedSpans
@@ -35,6 +36,10 @@ export async function GET(req: NextRequest) {
 
     const all = searchParams.get("all");
     if (all === "true") {
+      if (!isAdminRequest(req)) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
       const [rows] = await pool.execute(
         "SELECT * FROM cases ORDER BY date DESC"
       );
@@ -56,29 +61,32 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { id, company, amount, status, type, description, creator, paid, plan, duration, expires_at, timeline, forceContinue } = body;
+    const adminOverride = body.adminOverride === true && isAdminRequest(req);
     const companyMask = maskHardWords(company || "");
     const descriptionMask = maskHardWords(description || "");
     let finalDescription = descriptionMask.cleaned;
 
-    try {
-      const compliance = await checkCompliance(description || "");
-      if (!compliance.compliant) {
-        if (!forceContinue) {
-          return NextResponse.json(
-            {
-              error: "compliance",
-              reasons: compliance.reasons,
-              suggestion: compliance.suggestion,
-              flaggedSpans: compliance.flaggedSpans,
-            },
-            { status: 422 }
-          );
-        }
+    if (!adminOverride) {
+      try {
+        const compliance = await checkCompliance(description || "");
+        if (!compliance.compliant) {
+          if (!forceContinue) {
+            return NextResponse.json(
+              {
+                error: "compliance",
+                reasons: compliance.reasons,
+                suggestion: compliance.suggestion,
+                flaggedSpans: compliance.flaggedSpans,
+              },
+              { status: 422 }
+            );
+          }
 
-        finalDescription = maskFlaggedSpans(descriptionMask.cleaned, compliance.flaggedSpans);
+          finalDescription = maskFlaggedSpans(descriptionMask.cleaned, compliance.flaggedSpans);
+        }
+      } catch (error) {
+        console.error("AI compliance check failed; allowing Layer 1 result only:", error);
       }
-    } catch (error) {
-      console.error("AI compliance check failed; allowing Layer 1 result only:", error);
     }
 
     await pool.execute(
