@@ -26,7 +26,7 @@ export default function TermsPage() {
     },
     {
       title: "5. 平台权利", titleEn: "Platform Rights",
-      content: "本平台保留对违反本协议的内容进行删除、修改或屏蔽的权利，无需事先通知用户。对于严重违规行为，平台有权暂停或终止相关账户的使用权限。",
+      content: "本平台保留对违反本协议的内容进行删除、修改或屏蔽的权利，无需事先通知用户。平台将依据已发布的平台规则、内容规范及适用法律进行处理。对于严重违规行为，平台有权暂停或终止相关账户的使用权限。",
       contentEn: "We reserve the right to remove, modify, or block content that violates these terms without prior notice. For serious violations, we may suspend or terminate the associated account.",
     },
     {

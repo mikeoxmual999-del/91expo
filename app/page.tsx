@@ -19,6 +19,7 @@ type CaseItem = {
 
 export default function HomePage() {
   const [cases, setCases] = useState<CaseItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadCases = async () => {
@@ -29,6 +30,7 @@ export default function HomePage() {
           if (data.length > 0) {
             const arr = data.map((c: any) => ({ ...c, desc: c.description || c.desc || "", meta: c.date ? new Date(c.date).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }) : "日期未知" }));
             setCases(arr);
+            setLoading(false);
             return;
           }
         }
@@ -41,6 +43,7 @@ export default function HomePage() {
           setCases(arr);
         } catch { setCases([]); }
       }
+      setLoading(false);
     };
     loadCases();
   }, []);
@@ -73,15 +76,15 @@ export default function HomePage() {
       <section className="bg-[#0F2A44]">
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-12 md:py-20 grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 items-center">
           <div>
-            <div className="text-blue-300 text-sm font-medium mb-4 uppercase tracking-widest">商业争议记录平台</div>
+            <div className="text-blue-300 text-sm font-medium mb-4 uppercase tracking-widest">交易争议记录平台</div>
             <div className="w-12 h-[4px] bg-blue-400 mb-6" />
             <h1 className="text-3xl md:text-5xl font-bold leading-tight mb-5 text-white">
-              让每一条纠纷
+              记录每一笔交易中的
               <br />
-              都有记录与进展
+              争议与进展
             </h1>
             <p className="text-white/60 mb-8 max-w-xl leading-relaxed text-sm md:text-base">
-              以结构化方式记录纠纷信息，帮助信息被理解，并推动问题向解决发展。
+              面向消费者、企业及其他交易参与方的信息记录与协商平台。
             </p>
             <div className="flex gap-3 md:gap-4">
               <Link href="/create" className="inline-block bg-[#2B6CB0] hover:bg-[#2563a0] px-6 md:px-8 py-3 md:py-4 rounded-xl text-sm md:text-base font-medium transition text-white">
@@ -94,14 +97,38 @@ export default function HomePage() {
             <div className="flex gap-6 md:gap-8 mt-8 md:mt-10">
               {stats.map((s) => (
                 <div key={s.label}>
-                  <div className="text-xl md:text-2xl font-bold text-white">{s.value}</div>
+                  {loading ? (
+                    <div className="h-7 w-10 rounded-md bg-white/10 animate-pulse" />
+                  ) : (
+                    <div className="text-xl md:text-2xl font-bold text-white">{s.value}</div>
+                  )}
                   <div className="text-xs text-white/40 mt-0.5">{s.label}</div>
                 </div>
               ))}
             </div>
           </div>
           <div className="hidden md:block h-[600px] overflow-hidden pointer-events-none">
-            <div className="flex flex-col gap-4" style={{ animation: `scrollUp ${cases.length * 4}s linear infinite` }}>
+            {loading ? (
+              <div className="flex flex-col gap-4">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden flex">
+                    <div className="w-1 shrink-0 bg-[#E5E7EB]" />
+                    <div className="p-5 flex-1">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="space-y-2">
+                          <div className="h-4 w-32 rounded bg-[#E5E7EB] animate-pulse" />
+                          <div className="h-5 w-20 rounded bg-[#E5E7EB] animate-pulse" />
+                        </div>
+                        <div className="h-5 w-14 rounded-full bg-[#E5E7EB] animate-pulse" />
+                      </div>
+                      <div className="h-3 w-24 rounded bg-[#E5E7EB] animate-pulse mb-2" />
+                      <div className="h-3 w-full rounded bg-[#E5E7EB] animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+            <div className="flex flex-col gap-4" style={{ animation: cases.length > 0 ? `scrollUp ${cases.length * 4}s linear infinite` : undefined }}>
               {[...cases, ...cases, ...cases].map((card, index) => (
                 <Link key={index} href={`/case/${card.id}`} className="pointer-events-auto">
                   <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden hover:shadow-md transition cursor-pointer flex">
@@ -121,6 +148,7 @@ export default function HomePage() {
                 </Link>
               ))}
             </div>
+            )}
           </div>
         </div>
       </section>
@@ -134,13 +162,13 @@ export default function HomePage() {
             <div>
               <div className="text-[#2B6CB0] text-xs font-medium uppercase tracking-widest mb-4">关于我们</div>
               <h2 className="text-2xl md:text-3xl font-bold text-[#0F2A44] mb-5 leading-snug">
-                每一位消费者的声音<br />都值得被听见
+                让交易争议<br />被清晰记录
               </h2>
               <p className="text-[#4B5563] text-sm md:text-base leading-relaxed mb-4">
-                51记录是一个面向消费者的纠纷记录与追踪平台。我们致力于以透明、客观、结构化的方式记录真实消费纠纷，帮助消费者的诉求被企业和社会看见。
+                51记录是一个面向消费者、企业及其他交易参与方的信息记录与协商平台。我们以透明、客观、结构化的方式记录交易争议，帮助相关事实与进展被清晰呈现。
               </p>
               <p className="text-[#4B5563] text-sm md:text-base leading-relaxed">
-                无论纠纷金额大小，每一条记录都将永久公开保存，持续追踪进展，直至问题得到解决。
+                每一条记录将根据平台规则及适用法律持续保存、更新与展示，帮助相关进展被清晰追踪。
               </p>
             </div>
 
@@ -187,7 +215,24 @@ export default function HomePage() {
             <Link href="/feed" className="text-sm text-[#2B6CB0] hover:underline transition">查看全部 →</Link>
           </div>
           <div className="space-y-3 md:space-y-4">
-            {latest.map((card) => (
+            {loading && Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden flex">
+                <div className="w-1 shrink-0 bg-[#E5E7EB]" />
+                <div className="p-4 md:p-6 flex-1">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="space-y-2">
+                      <div className="h-4 w-36 rounded bg-[#E5E7EB] animate-pulse" />
+                      <div className="h-5 w-24 rounded bg-[#E5E7EB] animate-pulse" />
+                    </div>
+                    <div className="h-6 w-16 rounded-full bg-[#E5E7EB] animate-pulse" />
+                  </div>
+                  <div className="h-3 w-28 rounded bg-[#E5E7EB] animate-pulse mb-3" />
+                  <div className="h-4 w-full rounded bg-[#E5E7EB] animate-pulse mb-3" />
+                  <div className="h-3 w-20 rounded bg-[#E5E7EB] animate-pulse" />
+                </div>
+              </div>
+            ))}
+            {!loading && latest.map((card) => (
               <Link key={card.id} href={`/case/${card.id}`}>
                 <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden hover:shadow-md transition cursor-pointer flex">
                   <div className={`w-1 shrink-0 ${statusBar(card.status)}`} />

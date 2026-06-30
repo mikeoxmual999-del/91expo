@@ -107,14 +107,18 @@ export default function FeedPage() {
       <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-10 md:py-16">
         <div className="mb-6">
           <h1 className="text-xl md:text-2xl font-bold text-[#0F2A44] mb-2">纠纷记录</h1>
-          <p className="text-[#6B7280] text-sm">共 {cases.length} 条公开纠纷记录</p>
+          {loading ? (
+            <div className="h-5 w-36 rounded bg-[#E5E7EB] animate-pulse" />
+          ) : (
+            <p className="text-[#6B7280] text-sm">共 {cases.length} 条公开纠纷记录</p>
+          )}
         </div>
 
         <div className="flex gap-2 mb-3 flex-wrap">
           {statusFilters.map((f) => (
             <button key={f} onClick={() => setStatusFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs border transition ${statusFilter === f ? "bg-[#2B6CB0] border-[#2B6CB0] text-white" : "bg-white border-[#E5E7EB] text-[#6B7280] hover:border-[#2B6CB0] hover:text-[#2B6CB0]"}`}>
-              {f} <span className="opacity-60">{f === "全部" ? cases.length : cases.filter(c => c.status === f).length}</span>
+              {f} {loading ? <span className="inline-block h-3 w-4 rounded bg-current opacity-20 align-middle animate-pulse" /> : <span className="opacity-60">{f === "全部" ? cases.length : cases.filter(c => c.status === f).length}</span>}
             </button>
           ))}
         </div>

@@ -15,10 +15,10 @@ export default function Footer() {
               51记录
             </Link>
             <p className="text-white/60 text-sm mt-3 leading-relaxed max-w-[240px]">
-              商业争议记录与协商平台。以事实为基础，推动问题透明解决。
+              面向消费者、企业及其他交易参与方的信息记录与协商平台。
             </p>
             <p className="text-white/30 text-xs mt-2 leading-relaxed max-w-[240px]">
-              Business dispute records and resolution platform.
+              Transaction dispute records and coordination platform.
             </p>
           </div>
 
@@ -32,6 +32,7 @@ export default function Footer() {
               <Link href="/feed" className="text-white/60 hover:text-white text-sm transition">争议记录</Link>
               <Link href="/create" className="text-white/60 hover:text-white text-sm transition">发布纠纷</Link>
               <Link href="/search" className="text-white/60 hover:text-white text-sm transition">搜索企业</Link>
+              <Link href="/pricing" className="text-white/60 hover:text-white text-sm transition">发布方案</Link>
               <Link href="/about" className="text-white/60 hover:text-white text-sm transition">关于我们</Link>
             </div>
           </div>
@@ -45,7 +46,6 @@ export default function Footer() {
               <Link href="/disclaimer" className="text-white/40 hover:text-white text-sm transition">免责声明</Link>
               <Link href="/terms" className="text-white/40 hover:text-white text-sm transition">用户协议</Link>
               <Link href="/privacy" className="text-white/40 hover:text-white text-sm transition">隐私政策</Link>
-              <Link href="/admin" className="text-white/20 hover:text-white/40 text-xs transition mt-2">管理员入口</Link>
             </div>
           </div>
 
@@ -54,7 +54,7 @@ export default function Footer() {
         {/* BOTTOM BAR */}
         <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
           <p className="text-white/20 text-xs">
-            © {new Date().getFullYear()} 51记录 · 商业争议记录与协商平台
+            © {new Date().getFullYear()} 51记录 · 交易争议记录与协商平台
           </p>
           <p className="text-white/20 text-xs">
             本平台仅提供信息记录服务，不对内容真实性作出认定

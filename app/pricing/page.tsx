@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PRICING, PLAN_LABELS, PLAN_FEATURES, type PlanType } from "../config/pricing";
 
@@ -53,9 +52,8 @@ function PricingContent() {
   const price = PRICING[selectedPlan];
   const premiumAddon = PRICING.premium - PRICING.basic;
 
-  useEffect(() => { if (!caseId) router.replace("/create"); }, [caseId]);
-
   const handleContinue = () => {
+    if (!caseId) { router.push("/create"); return; }
     if (!agreed) { setShowDisclaimer(true); return; }
     localStorage.setItem("pending_payment", JSON.stringify({
       caseId,
@@ -172,7 +170,7 @@ function PricingContent() {
           className={`w-full py-4 rounded-xl text-base font-semibold transition text-white ${
             selectedPlan === "premium" ? "bg-yellow-500 hover:bg-yellow-400" : "bg-[#2B6CB0] hover:bg-[#2563a0]"
           } ${!agreed ? "opacity-70" : ""}`}>
-          继续付款 → ${price} USD
+          {caseId ? `继续付款 → $${price} USD` : "发布纠纷并选择方案"}
         </button>
         <p className="text-center text-[#9CA3AF] text-xs mt-4">支持信用卡 · WeChat Pay · 更多支付方式</p>
 
