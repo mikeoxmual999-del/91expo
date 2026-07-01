@@ -154,6 +154,10 @@ export async function PATCH(req: NextRequest) {
 // DELETE a case
 export async function DELETE(req: NextRequest) {
   try {
+    if (!isAdminRequest(req)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await req.json();
     await pool.execute("DELETE FROM cases WHERE id = ?", [id]);
     return NextResponse.json({ success: true });
