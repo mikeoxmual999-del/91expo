@@ -16,6 +16,8 @@ type CaseItem = {
   creator?: string;
   paid?: boolean;
   images?: string[];
+  plan?: string;
+  duration?: string;
 };
 
 type Message = { sender: string; text: string; timestamp: string; };
@@ -256,6 +258,27 @@ export default function AdminPage() {
     if (!confirm("确认删除该记录？删除后将无法恢复。")) return;
     try { await fetch("/api/cases", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }); } catch {}
     loadCases();
+  };
+
+  const handleForcePublish = async (id: string) => {
+    if (!confirm("确认强制发布此记录？将跳过付款直接公开。")) return;
+    try {
+      const res = await fetch("/api/cases/force-publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "强制发布失败");
+        return;
+      }
+      loadCases();
+    } catch (error) {
+      console.error("Force publish failed:", error);
+      alert("强制发布失败");
+    }
   };
 
   const handleDeleteCoord = async (index: number, id?: number) => {
@@ -506,6 +529,7 @@ export default function AdminPage() {
                   <div className="text-xs text-white/25 mb-4 border-t border-white/5 pt-3">发布于 {formatDate(c.date)} · 创建者：{c.creator || "未知"} · ID: {c.id}</div>
                   <div className="flex gap-3 flex-wrap">
                     <Link href={`/case/${c.id}`} className="border border-white/20 hover:border-white/40 text-white/60 px-4 py-2 rounded-lg text-xs transition">查看详情</Link>
+                    {!c.paid && <button onClick={() => handleForcePublish(c.id)} className="bg-blue-600 hover:bg-blue-500 px-5 py-2 rounded-lg text-sm transition">强制发布</button>}
                     {c.status !== "已解决" && <button onClick={() => handleForceClose(c.id)} className="bg-green-600 hover:bg-green-500 px-5 py-2 rounded-lg text-sm transition">✅ 批准结案</button>}
                     <button onClick={() => handleDelete(c.id)} className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 px-5 py-2 rounded-lg text-sm transition">🗑️ 删除记录</button>
                   </div>
