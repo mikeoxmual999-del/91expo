@@ -21,6 +21,7 @@ type CaseItem = {
 type Message = { sender: string; text: string; timestamp: string; };
 type DMThread = { caseId: string; posterId: string; responderId: string; messages: Message[]; };
 type CoordinationRequest = { id?: number; caseId: string; amount: string; desc: string; contact: string; date: string; };
+type StatusFilter = "全部" | "待付款" | "未回应" | "协商中" | "申请结案中" | "已解决";
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
@@ -34,6 +35,7 @@ export default function AdminPage() {
   const [expandedDm, setExpandedDm] = useState<string | null>(null);
   const [coordRequests, setCoordRequests] = useState<CoordinationRequest[]>([]);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("全部");
   const [sortBy, setSortBy] = useState<"date" | "amount" | "status">("date");
   const [lightbox, setLightbox] = useState<string | null>(null);
 
@@ -266,6 +268,7 @@ export default function AdminPage() {
   const pending = cases.filter((c) => c.status === "申请结案中");
 
   const filteredCases = cases
+    .filter(c => statusFilter === "全部" || c.status === statusFilter)
     .filter(c => !search || c.company.toLowerCase().includes(search.toLowerCase()) || c.desc.toLowerCase().includes(search.toLowerCase()) || c.type.includes(search) || c.status.includes(search))
     .sort((a, b) => {
       if (sortBy === "amount") { const aNum = parseInt(a.amount.replace(/[^0-9]/g, "") || "0"); const bNum = parseInt(b.amount.replace(/[^0-9]/g, "") || "0"); return bNum - aNum; }
@@ -397,6 +400,18 @@ export default function AdminPage() {
                 placeholder="搜索企业名称、描述、类型、状态..."
                 className="flex-1 bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500 transition text-sm"
               />
+              <select
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value as StatusFilter)}
+                className="bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl text-white/60 focus:outline-none focus:border-blue-500 transition text-sm cursor-pointer"
+              >
+                <option value="全部" style={{backgroundColor:"#0B0F14"}}>全部状态</option>
+                <option value="待付款" style={{backgroundColor:"#0B0F14"}}>待付款</option>
+                <option value="未回应" style={{backgroundColor:"#0B0F14"}}>未回应</option>
+                <option value="协商中" style={{backgroundColor:"#0B0F14"}}>协商中</option>
+                <option value="申请结案中" style={{backgroundColor:"#0B0F14"}}>申请结案中</option>
+                <option value="已解决" style={{backgroundColor:"#0B0F14"}}>已解决</option>
+              </select>
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value as any)}
