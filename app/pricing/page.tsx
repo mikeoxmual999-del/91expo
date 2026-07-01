@@ -6,7 +6,7 @@ import { PRICING, PLAN_LABELS, PLAN_FEATURES, type PlanType } from "../config/pr
 
 const DISCLAIMER_ZH = `【重要声明 — 请在付款前仔细阅读】
 
-1. 服务性质：分鉴路（Fenjianlu）仅提供商业纠纷信息的记录与展示服务，不提供法律建议、调解或仲裁服务，亦不对任何争议的处理结果承担责任。
+1. 服务性质：51记录（51jilu）仅提供商业纠纷信息的记录与展示服务，不提供法律建议、调解或仲裁服务，亦不对任何争议的处理结果承担责任。
 
 2. 发布者责任：发布者须确保所提交的全部信息真实、合法、无误，并对所发布内容承担完全的法律责任。如因发布虚假、诽谤或侵权内容而产生的任何法律纠纷或损失，由发布者自行承担，与本平台无关。
 
@@ -25,7 +25,7 @@ const DISCLAIMER_ZH = `【重要声明 — 请在付款前仔细阅读】
 
 const DISCLAIMER_EN = `【IMPORTANT NOTICE — Please read carefully before payment】
 
-1. Nature of Service: Fenjianlu provides commercial dispute information recording and display services only. We do not provide legal advice, mediation, or arbitration, and bear no responsibility for the outcome of any dispute.
+1. Nature of Service: 51jilu provides commercial dispute information recording and display services only. We do not provide legal advice, mediation, or arbitration, and bear no responsibility for the outcome of any dispute.
 
 2. Publisher Responsibility: Publishers must ensure all submitted information is truthful, lawful, and accurate. Publishers bear full legal responsibility for their content. Any legal disputes or losses arising from false, defamatory, or infringing content are the sole responsibility of the publisher.
 

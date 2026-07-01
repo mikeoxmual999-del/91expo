@@ -279,10 +279,10 @@ function CheckoutContent() {
             {isPremium && (
               <div className="space-y-1 mb-3">
                 <div className="flex justify-between text-xs text-[#9CA3AF]">
-                  <span>永久发布</span><span>$15 USD</span>
+                  <span>永久发布</span><span>$39.99 USD</span>
                 </div>
                 <div className="flex justify-between text-xs text-[#9CA3AF]">
-                  <span>置顶推广 7 天</span><span>+$10 USD</span>
+                  <span>置顶推广 7 天</span><span>+$20 USD</span>
                 </div>
               </div>
             )}
