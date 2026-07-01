@@ -119,6 +119,10 @@ export async function POST(req: NextRequest) {
 // PATCH update a case
 export async function PATCH(req: NextRequest) {
   try {
+    if (!isAdminRequest(req)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const { id, ...fields } = body;
 
