@@ -138,6 +138,14 @@ export default function AdminPage() {
 
   const toggleDmThread = async (thread: DMThread) => {
     const key = `${thread.caseId}_${thread.posterId}_${thread.responderId}`;
+    const setThreadMessages = (messages: Message[]) => {
+      setDmThreads(prev => prev.map(t => (
+        t.caseId === thread.caseId && t.posterId === thread.posterId && t.responderId === thread.responderId
+          ? { ...t, messages }
+          : t
+      )));
+    };
+
     if (expandedDm === key) {
       setExpandedDm(null);
       return;
@@ -147,18 +155,22 @@ export default function AdminPage() {
     if (thread.messages) return;
 
     try {
-      const posterQuery = thread.posterId ? `&posterId=${encodeURIComponent(thread.posterId)}` : "";
+      const shouldNarrowByPoster = thread.posterId && thread.posterId !== "admin";
+      const posterQuery = shouldNarrowByPoster ? `&posterId=${encodeURIComponent(thread.posterId)}` : "";
       const res = await fetch(`/api/messages?caseId=${thread.caseId}&responderId=${encodeURIComponent(thread.responderId)}${posterQuery}`);
-      if (res.ok) {
-        const data = await res.json();
-        const messages = data.map((m: any) => ({ sender: m.sender, text: m.text, timestamp: m.timestamp }));
-        setDmThreads(prev => prev.map(t => (
-          t.caseId === thread.caseId && t.posterId === thread.posterId && t.responderId === thread.responderId
-            ? { ...t, messages }
-            : t
-        )));
+      if (!res.ok) {
+        console.error("Failed to load admin DM thread:", res.status, res.statusText);
+        setThreadMessages([]);
+        return;
       }
-    } catch {}
+
+      const data = await res.json();
+      const messages = data.map((m: any) => ({ sender: m.sender, text: m.text, timestamp: m.timestamp }));
+      setThreadMessages(messages);
+    } catch (error) {
+      console.error("Failed to load admin DM thread:", error);
+      setThreadMessages([]);
+    }
   };
 
   const loadCoordination = async () => {
