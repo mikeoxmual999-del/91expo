@@ -19,7 +19,16 @@ type CaseItem = {
 };
 
 type Message = { sender: string; text: string; timestamp: string; };
-type DMThread = { caseId: string; posterId: string; responderId: string; messages: Message[]; };
+type DMThread = {
+  caseId: string;
+  caseTitle: string;
+  posterId: string;
+  responderId: string;
+  messageCount: number;
+  latestMessageText: string;
+  latestTimestamp: string;
+  messages?: Message[];
+};
 type CoordinationRequest = { id?: number; caseId: string; amount: string; desc: string; contact: string; date: string; };
 type StatusFilter = "全部" | "待付款" | "未回应" | "协商中" | "申请结案中" | "已解决";
 
@@ -86,33 +95,70 @@ export default function AdminPage() {
 
   const loadDMs = async () => {
     try {
-      const allCaseIds = cases.map(c => c.id);
-      const allThreads: DMThread[] = [];
-      for (const caseId of allCaseIds) {
-        const res = await fetch(`/api/messages?caseId=${caseId}`);
-        if (res.ok) {
-          const threads = await res.json();
-          for (const t of threads) {
-            const msgRes = await fetch(`/api/messages?caseId=${caseId}&responderId=${encodeURIComponent(t.responder_id)}`);
-            if (msgRes.ok) {
-              const msgs = await msgRes.json();
-              allThreads.push({ caseId, posterId: t.poster_id || "", responderId: t.responder_id, messages: msgs.map((m: any) => ({ sender: m.sender, text: m.text, timestamp: m.timestamp })) });
-            }
-          }
-        }
+      const res = await fetch("/api/messages?allThreads=true", { credentials: "same-origin" });
+      if (res.ok) {
+        const data = await res.json();
+        setDmThreads(data.map((t: any) => ({
+          caseId: String(t.caseId || ""),
+          caseTitle: t.caseTitle || t.caseCompany || "",
+          posterId: t.posterId || "",
+          responderId: t.responderId || "",
+          messageCount: Number(t.messageCount || 0),
+          latestMessageText: t.latestMessageText || "",
+          latestTimestamp: t.latestTimestamp || "",
+        })));
+        return;
       }
-      allThreads.sort((a, b) => { const aLast = a.messages[a.messages.length - 1]?.timestamp || ""; const bLast = b.messages[b.messages.length - 1]?.timestamp || ""; return bLast.localeCompare(aLast); });
-      setDmThreads(allThreads);
-      return;
+      if (res.status === 401) return;
     } catch {}
     const threads: DMThread[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && key.startsWith("dm_") && !key.includes("%")) {
-        try { threads.push(JSON.parse(localStorage.getItem(key) || "")); } catch {}
+        try {
+          const thread = JSON.parse(localStorage.getItem(key) || "");
+          const messages = (thread.messages || []) as Message[];
+          const latest = messages[messages.length - 1];
+          threads.push({
+            caseId: thread.caseId || "",
+            caseTitle: getCaseCompany(thread.caseId || ""),
+            posterId: thread.posterId || "",
+            responderId: thread.responderId || "",
+            messageCount: messages.length,
+            latestMessageText: latest?.text || "",
+            latestTimestamp: latest?.timestamp || "",
+            messages,
+          });
+        } catch {}
       }
     }
+    threads.sort((a, b) => b.latestTimestamp.localeCompare(a.latestTimestamp));
     setDmThreads(threads);
+  };
+
+  const toggleDmThread = async (thread: DMThread) => {
+    const key = `${thread.caseId}_${thread.posterId}_${thread.responderId}`;
+    if (expandedDm === key) {
+      setExpandedDm(null);
+      return;
+    }
+
+    setExpandedDm(key);
+    if (thread.messages) return;
+
+    try {
+      const posterQuery = thread.posterId ? `&posterId=${encodeURIComponent(thread.posterId)}` : "";
+      const res = await fetch(`/api/messages?caseId=${thread.caseId}&responderId=${encodeURIComponent(thread.responderId)}${posterQuery}`);
+      if (res.ok) {
+        const data = await res.json();
+        const messages = data.map((m: any) => ({ sender: m.sender, text: m.text, timestamp: m.timestamp }));
+        setDmThreads(prev => prev.map(t => (
+          t.caseId === thread.caseId && t.posterId === thread.posterId && t.responderId === thread.responderId
+            ? { ...t, messages }
+            : t
+        )));
+      }
+    } catch {}
   };
 
   const loadCoordination = async () => {
@@ -129,7 +175,7 @@ export default function AdminPage() {
     try { setCoordRequests(JSON.parse(stored).sort((a: CoordinationRequest, b: CoordinationRequest) => new Date(b.date).getTime() - new Date(a.date).getTime())); } catch {}
   };
 
-  useEffect(() => { if (authed) { loadCases(); loadCoordination(); } }, [authed]);
+  useEffect(() => { if (authed) { loadCases(); loadDMs(); loadCoordination(); } }, [authed]);
 
   const handleLogin = async () => {
     setLoggingIn(true);
@@ -463,27 +509,27 @@ export default function AdminPage() {
             {dmThreads.length === 0 && <div className="text-center py-24"><div className="text-white/40 text-sm">暂无私信记录</div></div>}
             <div className="space-y-4">
               {dmThreads.map((thread, index) => {
-                const key = `${thread.caseId}_${thread.responderId}`;
+                const key = `${thread.caseId}_${thread.posterId}_${thread.responderId}`;
                 const isExpanded = expandedDm === key;
-                const lastMsg = thread.messages[thread.messages.length - 1];
                 return (
                   <div key={index} className="bg-[#111827] border border-white/10 rounded-xl overflow-hidden">
-                    <button onClick={() => setExpandedDm(isExpanded ? null : key)} className="w-full px-6 py-5 flex justify-between items-start hover:bg-white/5 transition text-left">
+                    <button onClick={() => toggleDmThread(thread)} className="w-full px-6 py-5 flex justify-between items-start hover:bg-white/5 transition text-left">
                       <div>
-                        <div className="text-white font-medium text-sm mb-1">📁 案件：{getCaseCompany(thread.caseId)}</div>
+                        <div className="text-white font-medium text-sm mb-1">📁 案件：{thread.caseTitle || getCaseCompany(thread.caseId)}</div>
                         <div className="text-xs text-white/40">发帖人：{thread.posterId} · 回应者：{thread.responderId}</div>
-                        {lastMsg && <div className="text-xs text-white/30 mt-2 truncate max-w-[500px]">最新：{lastMsg.text}</div>}
+                        <div className="text-xs text-white/30 mt-2 truncate max-w-[500px]">最新：{thread.latestMessageText || "暂无消息"}</div>
                       </div>
                       <div className="text-right shrink-0 ml-4">
-                        <div className="text-xs text-white/30 mb-1">{thread.messages.length} 条消息</div>
-                        <div className="text-xs text-white/20">{lastMsg ? formatTime(lastMsg.timestamp) : ""}</div>
+                        <div className="text-xs text-white/30 mb-1">{thread.messageCount} 条消息</div>
+                        <div className="text-xs text-white/20">{formatTime(thread.latestTimestamp)}</div>
                         <div className="text-white/40 text-xs mt-2">{isExpanded ? "▲ 收起" : "▼ 展开"}</div>
                       </div>
                     </button>
                     {isExpanded && (
                       <div className="border-t border-white/10 px-6 py-5 space-y-4 max-h-[400px] overflow-y-auto">
-                        {thread.messages.length === 0 && <div className="text-white/30 text-sm text-center py-4">暂无消息</div>}
-                        {thread.messages.map((msg, mIndex) => (
+                        {!thread.messages && <div className="text-white/30 text-sm text-center py-4">加载中...</div>}
+                        {thread.messages?.length === 0 && <div className="text-white/30 text-sm text-center py-4">暂无消息</div>}
+                        {thread.messages?.map((msg, mIndex) => (
                           <div key={mIndex} className="flex flex-col gap-1">
                             <div className="text-xs text-white/30">{msg.sender} · {formatTime(msg.timestamp)}</div>
                             <div className="bg-white/5 rounded-xl px-4 py-3 text-sm text-white/80 leading-relaxed">{msg.text}</div>

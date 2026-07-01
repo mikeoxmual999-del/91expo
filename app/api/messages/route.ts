@@ -1,12 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
+import { isAdminRequest } from "@/app/lib/adminAuth";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const caseId = searchParams.get("caseId");
     const responderId = searchParams.get("responderId");
+    const posterId = searchParams.get("posterId");
     const userId = searchParams.get("userId");
+    const allThreads = searchParams.get("allThreads");
+
+    // admin: get all threads across all cases
+    if (allThreads === "true") {
+      if (!isAdminRequest(req)) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      const [rows] = await pool.execute(
+        `SELECT
+          m.case_id as caseId,
+          c.company as caseCompany,
+          c.company as caseTitle,
+          m.poster_id as posterId,
+          m.responder_id as responderId,
+          COUNT(*) as messageCount,
+          (
+            SELECT m2.text
+            FROM messages m2
+            WHERE m2.case_id = m.case_id
+              AND m2.poster_id <=> m.poster_id
+              AND m2.responder_id = m.responder_id
+            ORDER BY m2.timestamp DESC
+            LIMIT 1
+          ) as latestMessageText,
+          MAX(m.timestamp) as latestTimestamp
+         FROM messages m
+         LEFT JOIN cases c ON c.id = m.case_id
+         GROUP BY m.case_id, m.poster_id, m.responder_id, c.company
+         ORDER BY latestTimestamp DESC`
+      );
+      return NextResponse.json(rows);
+    }
 
     // get all threads for a user across all cases
     if (caseId === "all" && userId) {
@@ -40,7 +75,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(rows);
     }
 
-    // thread: get all messages for caseId + responderId
+    // thread: get all messages for caseId + responderId, optionally narrowed by posterId
+    if (posterId) {
+      const [rows] = await pool.execute(
+        "SELECT * FROM messages WHERE case_id = ? AND responder_id = ? AND poster_id = ? ORDER BY timestamp ASC",
+        [caseId, responderId, posterId]
+      );
+      return NextResponse.json(rows);
+    }
+
     const [rows] = await pool.execute(
       "SELECT * FROM messages WHERE case_id = ? AND responder_id = ? ORDER BY timestamp ASC",
       [caseId, responderId]
